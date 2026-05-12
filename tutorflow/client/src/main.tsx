@@ -3,6 +3,22 @@ import ReactDOM from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
+import { Login } from './pages/auth/Login'
+import { Register } from './pages/auth/Register'
+import { Onboarding } from './pages/auth/Onboarding'
+import { Dashboard } from './pages/Dashboard'
+import { Search } from './pages/Search'
+import { TutorProfile } from './pages/TutorProfile'
+import { Checkout } from './pages/Checkout'
+import { VideoRoom } from './pages/VideoRoom'
+import { Review } from './pages/Review'
+import { TutorStats } from './pages/TutorStats'
+import { AdminTutors } from './pages/AdminTutors'
+import { AdminDashboard } from './pages/AdminDashboard'
+import { AdminDisputes } from './pages/AdminDisputes'
+import { Notifications } from './pages/Notifications'
+import { NotificationSettings } from './pages/NotificationSettings'
+import { ProtectedRoute } from './components/ProtectedRoute'
 import './index.css'
 
 const queryClient = new QueryClient()
@@ -13,9 +29,70 @@ const router = createBrowserRouter([
     element: <App />,
     children: [
       {
-        path: '/',
-        element: <div>Welcome to TutorFlow</div>,
+        path: 'login',
+        element: <Login />,
       },
+      {
+        path: 'register',
+        element: <Register />,
+      },
+      {
+        path: 'search',
+        element: <Search />,
+      },
+      {
+        path: 'tutors/:id',
+        element: <TutorProfile />,
+      },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          {
+            path: 'dashboard',
+            element: <Dashboard />,
+          },
+          {
+            path: 'onboarding',
+            element: <Onboarding />,
+          },
+          {
+            path: 'checkout/:sessionId',
+            element: <Checkout />,
+          },
+          {
+            path: 'session/:id/room',
+            element: <VideoRoom />,
+          },
+          {
+            path: 'review/:sessionId',
+            element: <Review />,
+          },
+          {
+            path: 'dashboard/tutor/stats',
+            element: <TutorStats />,
+          },
+          {
+            path: 'admin/tutors',
+            element: <AdminTutors />,
+          },
+          {
+            path: 'admin/dashboard',
+            element: <AdminDashboard />,
+          },
+          {
+            path: 'admin/disputes',
+            element: <AdminDisputes />,
+          },
+          {
+            path: 'notifications',
+            element: <Notifications />,
+          },
+          {
+            path: 'settings/notifications',
+            element: <NotificationSettings />,
+          }
+        ]
+      }
     ],
   },
 ])
