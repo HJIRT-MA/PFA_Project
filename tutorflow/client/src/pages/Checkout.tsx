@@ -60,26 +60,31 @@ export const Checkout = () => {
     // For now, we assume the server can return session details including a new/existing clientSecret.
     const fetchSession = async () => {
       try {
-        const res = await api.get(`/api/sessions/me`);
-        const session = res.data.sessions.find((s: any) => s.id === sessionId);
+        const res = await api.get(`/api/sessions/${sessionId}`);
+        const { session, clientSecret: apiSecret } = res.data;
+        
         if (!session) {
           navigate('/dashboard');
           return;
         }
         setSessionData(session);
         
-        // Actually, we need the clientSecret from the backend. Since GET /sessions/me doesn't return it,
-        // we'll rely on the history state passed from the booking modal.
-        // If not present, we can't mount Stripe.
-        const state = window.history.state;
-        if (state?.usr?.clientSecret) {
-          setClientSecret(state.usr.clientSecret);
+        // Use clientSecret from API if available, fallback to history state
+        if (apiSecret) {
+          setClientSecret(apiSecret);
         } else {
-          // Fallback or error
-          setErrorMessage('Payment session expired. Please book again.');
+          const state = window.history.state;
+          if (state?.usr?.clientSecret) {
+            setClientSecret(state.usr.clientSecret);
+          } else if (session.status !== 'PENDING') {
+            setErrorMessage('This session is already ' + session.status.toLowerCase());
+          } else {
+            setErrorMessage('Payment session expired or could not be retrieved. Please try booking again.');
+          }
         }
       } catch (err) {
         console.error(err);
+        setErrorMessage('Failed to load session details.');
       }
     };
     fetchSession();

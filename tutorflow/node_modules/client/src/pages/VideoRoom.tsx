@@ -21,10 +21,8 @@ export const VideoRoom = () => {
   const { data: session, isLoading } = useQuery({
     queryKey: ['session', id],
     queryFn: async () => {
-      const res = await api.get('/api/sessions/me');
-      const s = res.data.sessions.find((s: any) => s.id === id);
-      if (!s) throw new Error('Session not found');
-      return s;
+      const res = await api.get(`/api/sessions/${id}`);
+      return res.data.session;
     }
   });
 

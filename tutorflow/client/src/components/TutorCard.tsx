@@ -23,39 +23,56 @@ export const TutorCard = ({ tutor }: TutorCardProps) => {
   const navigate = useNavigate();
 
   return (
-    <Card className="h-full flex flex-col hover:shadow-md transition-shadow">
-      <CardHeader className="flex flex-row items-center gap-4 pb-2">
-        <Avatar className="h-14 w-14 border">
-          <AvatarImage src={tutor.avatarUrl || undefined} alt={tutor.name} />
-          <AvatarFallback>{tutor.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-        </Avatar>
-        <div className="flex flex-col">
-          <h3 className="font-semibold text-lg">{tutor.name}</h3>
-          <div className="flex items-center text-sm text-muted-foreground mt-1">
-            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 mr-1" />
-            <span className="font-medium text-foreground mr-1">{tutor.averageRating.toFixed(1)}</span>
-            <span>({tutor.reviewCount} reviews)</span>
+    <Card className="group h-full flex flex-col border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 rounded-3xl overflow-hidden bg-white">
+      <div className="relative h-32 bg-primary/5 group-hover:bg-primary/10 transition-colors" />
+      
+      <div className="px-6 -mt-12 flex-1 flex flex-col">
+        <div className="relative mb-4 inline-block">
+          <Avatar className="h-24 w-24 border-4 border-white shadow-sm">
+            <AvatarImage src={tutor.avatarUrl || undefined} alt={tutor.name} />
+            <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl">
+              {tutor.name.substring(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <h3 className="font-bold text-xl tracking-tight group-hover:text-primary transition-colors">{tutor.name}</h3>
+          <div className="flex items-center text-sm">
+            <div className="flex items-center px-2 py-1 bg-yellow-400/10 text-yellow-700 rounded-lg font-bold">
+              <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500 mr-1" />
+              {tutor.averageRating.toFixed(1)}
+            </div>
+            <span className="text-muted-foreground ml-2 font-medium">({tutor.reviewCount} reviews)</span>
           </div>
         </div>
-      </CardHeader>
-      
-      <CardContent className="flex-1 pb-4">
-        <div className="flex flex-wrap gap-2 mt-2">
-          {tutor.subjects.slice(0, 3).map((subject) => (
-            <Badge key={subject} variant="secondary">{subject}</Badge>
+        
+        <div className="mt-6 flex flex-wrap gap-2">
+          {tutor.subjects.slice(0, 2).map((subject) => (
+            <Badge key={subject} variant="secondary" className="bg-primary/5 text-primary hover:bg-primary/10 border-none px-3 py-1 rounded-full text-xs font-bold">
+              {subject}
+            </Badge>
           ))}
-          {tutor.subjects.length > 3 && (
-            <Badge variant="outline">+{tutor.subjects.length - 3}</Badge>
+          {tutor.subjects.length > 2 && (
+            <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium border-muted/30">
+              +{tutor.subjects.length - 2} more
+            </Badge>
           )}
         </div>
-      </CardContent>
+      </div>
 
-      <CardFooter className="flex items-center justify-between border-t pt-4">
-        <div className="font-semibold text-lg">
-          ${tutor.hourlyRate}<span className="text-sm font-normal text-muted-foreground">/h</span>
+      <CardFooter className="px-6 py-6 flex items-center justify-between mt-auto">
+        <div className="flex flex-col">
+          <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground">Rate</span>
+          <div className="font-black text-2xl text-foreground">
+            ${tutor.hourlyRate}<span className="text-sm font-bold text-muted-foreground">/hr</span>
+          </div>
         </div>
-        <Button variant="default" size="sm" onClick={() => navigate(`/tutors/${tutor.id}`)}>
-          View profile
+        <Button 
+          className="rounded-2xl px-6 font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:-translate-y-0.5" 
+          onClick={() => navigate(`/tutors/${tutor.id}`)}
+        >
+          Profile
         </Button>
       </CardFooter>
     </Card>

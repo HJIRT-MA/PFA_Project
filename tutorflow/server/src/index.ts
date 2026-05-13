@@ -23,6 +23,10 @@ import { setupSocketIO } from './socket';
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
 app.use(morgan('dev'));
+
+// Stripe webhook needs raw body
+app.use('/api/sessions/webhook', express.raw({ type: 'application/json' }));
+
 app.use(express.json());
 app.use(passport.initialize());
 
@@ -38,6 +42,10 @@ app.use('/api/users', usersRouter);
 app.use('/api/disputes', disputesRouter);
 
 // Routes
+app.get('/', (req: Request, res: Response) => {
+  res.json({ message: 'TutorFlow API is running', health: '/health' });
+});
+
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok' });
 });

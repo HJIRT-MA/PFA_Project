@@ -20,46 +20,40 @@ exports.tutorsRouter.get('/', async (req, res, next) => {
             where.subjects = { has: subject };
         if (maxRate !== undefined)
             where.hourlyRate = { lte: maxRate };
-        const allTutors = await prisma_1.prisma.tutorProfile.findMany({
-            where,
-            include: {
-                user: {
-                    include: { reviewsAsTutor: { select: { rating: true } } }
-                }
-            }
-        });
-        let mappedTutors = allTutors.map(t => {
-            const reviews = t.user.reviewsAsTutor;
-            const reviewCount = reviews.length;
-            const averageRating = reviewCount > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount : 0;
-            return {
-                id: t.userId,
-                name: t.user.email.split('@')[0],
-                avatarUrl: t.user.avatarUrl,
-                subjects: t.subjects,
-                hourlyRate: t.hourlyRate,
-                averageRating,
-                reviewCount,
-                availableSlotsCount: 15, // Mock for now
-                availability: t.availability
-            };
-        });
-        if (minRating !== undefined) {
-            mappedTutors = mappedTutors.filter(t => t.averageRating >= minRating);
-        }
+        if (minRating !== undefined)
+            where.averageRating = { gte: minRating };
+        let orderBy = { averageRating: 'desc' };
         if (sortBy === 'price') {
-            mappedTutors.sort((a, b) => a.hourlyRate - b.hourlyRate);
+            orderBy = { hourlyRate: 'asc' };
         }
         else if (sortBy === 'reviews') {
-            mappedTutors.sort((a, b) => b.reviewCount - a.reviewCount);
+            orderBy = { reviewCount: 'desc' };
         }
-        else {
-            mappedTutors.sort((a, b) => b.averageRating - a.averageRating);
-        }
-        const total = mappedTutors.length;
+        const [tutors, total] = await Promise.all([
+            prisma_1.prisma.tutorProfile.findMany({
+                where,
+                include: {
+                    user: { select: { email: true, avatarUrl: true } }
+                },
+                orderBy,
+                skip: (page - 1) * limit,
+                take: limit,
+            }),
+            prisma_1.prisma.tutorProfile.count({ where })
+        ]);
+        const mappedTutors = tutors.map(t => ({
+            id: t.userId,
+            name: t.user.email.split('@')[0],
+            avatarUrl: t.user.avatarUrl,
+            subjects: t.subjects,
+            hourlyRate: t.hourlyRate,
+            averageRating: t.averageRating,
+            reviewCount: t.reviewCount,
+            availableSlotsCount: 15, // Mock for now
+            availability: t.availability
+        }));
         const totalPages = Math.ceil(total / limit);
-        const paginatedTutors = mappedTutors.slice((page - 1) * limit, page * limit);
-        res.json({ tutors: paginatedTutors, total, page, totalPages });
+        res.json({ tutors: mappedTutors, total, page, totalPages });
     }
     catch (error) {
         next(error);

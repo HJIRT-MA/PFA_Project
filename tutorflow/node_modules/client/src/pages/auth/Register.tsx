@@ -65,23 +65,26 @@ export const Register = () => {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label>I want to sign up as a</Label>
+          <div className="space-y-3">
+            <Label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">I want to sign up as a</Label>
             <RadioGroup 
               defaultValue="STUDENT" 
-              onValueChange={(val) => setValue('role', val as any)}
-              className="flex space-x-4"
+              onValueChange={(val) => {
+                console.log('Role changed to:', val);
+                setValue('role', val as any);
+              }}
+              className="flex gap-4"
             >
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2 bg-muted/30 px-4 py-3 rounded-xl border-2 border-transparent has-[[data-checked]]:border-primary has-[[data-checked]]:bg-primary/5 transition-all cursor-pointer flex-1">
                 <RadioGroupItem value="STUDENT" id="r1" />
-                <Label htmlFor="r1">Student</Label>
+                <Label htmlFor="r1" className="cursor-pointer font-bold flex-1">Student</Label>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2 bg-muted/30 px-4 py-3 rounded-xl border-2 border-transparent has-[[data-checked]]:border-primary has-[[data-checked]]:bg-primary/5 transition-all cursor-pointer flex-1">
                 <RadioGroupItem value="TUTOR" id="r2" />
-                <Label htmlFor="r2">Tutor</Label>
+                <Label htmlFor="r2" className="cursor-pointer font-bold flex-1">Tutor</Label>
               </div>
             </RadioGroup>
-            {errors.role && <p className="text-sm text-destructive">{errors.role.message}</p>}
+            {errors.role && <p className="text-sm text-destructive font-medium">{errors.role.message}</p>}
           </div>
 
           <div className="space-y-2">

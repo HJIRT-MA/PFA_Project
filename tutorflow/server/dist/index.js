@@ -25,6 +25,8 @@ const socket_1 = require("./socket");
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
 app.use((0, morgan_1.default)('dev'));
+// Stripe webhook needs raw body
+app.use('/api/sessions/webhook', express_1.default.raw({ type: 'application/json' }));
 app.use(express_1.default.json());
 app.use(passport_1.default.initialize());
 // API Routes

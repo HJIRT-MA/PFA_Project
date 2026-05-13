@@ -1,4 +1,5 @@
 import { PrismaClient, Role } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -10,11 +11,13 @@ async function main() {
   await prisma.tutorProfile.deleteMany();
   await prisma.user.deleteMany();
 
+  const passwordHash = await bcrypt.hash('password123', 10);
+
   // Create Admin
   const admin = await prisma.user.create({
     data: {
       email: 'admin@tutorflow.local',
-      passwordHash: 'hashed_password_here', // In a real app, this should be a bcrypt hash
+      passwordHash,
       role: Role.ADMIN,
     },
   });
@@ -23,7 +26,7 @@ async function main() {
   const student1 = await prisma.user.create({
     data: {
       email: 'student1@tutorflow.local',
-      passwordHash: 'hashed_password_here',
+      passwordHash,
       role: Role.STUDENT,
     },
   });
@@ -31,7 +34,7 @@ async function main() {
   const student2 = await prisma.user.create({
     data: {
       email: 'student2@tutorflow.local',
-      passwordHash: 'hashed_password_here',
+      passwordHash,
       role: Role.STUDENT,
     },
   });
@@ -40,7 +43,7 @@ async function main() {
   const tutor1 = await prisma.user.create({
     data: {
       email: 'tutor1@tutorflow.local',
-      passwordHash: 'hashed_password_here',
+      passwordHash,
       role: Role.TUTOR,
       tutorProfile: {
         create: {
@@ -56,7 +59,7 @@ async function main() {
   const tutor2 = await prisma.user.create({
     data: {
       email: 'tutor2@tutorflow.local',
-      passwordHash: 'hashed_password_here',
+      passwordHash,
       role: Role.TUTOR,
       tutorProfile: {
         create: {
@@ -70,7 +73,7 @@ async function main() {
   });
 
   console.log('Seeding completed successfully!');
-  console.log({ admin, student1, student2, tutor1, tutor2 });
+  console.log('Login with password: password123');
 }
 
 main()

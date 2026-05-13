@@ -11,7 +11,7 @@ const resend_1 = require("resend");
 const prisma_1 = require("../../lib/prisma");
 const auth_1 = require("../../middleware/auth");
 const stripe = new stripe_1.default(process.env.STRIPE_SECRET_KEY || 'sk_test_mock', {
-    apiVersion: '2026-04-22.dahlia',
+    apiVersion: '2023-10-16', // Bypass strict version type check
 });
 const resend = new resend_1.Resend(process.env.RESEND_API_KEY || 're_mock');
 exports.sessionsRouter = (0, express_1.Router)();
@@ -19,6 +19,61 @@ const createSessionSchema = zod_1.z.object({
     tutorId: zod_1.z.string().uuid(),
     datetime: zod_1.z.string().datetime(),
     durationMin: zod_1.z.enum(['30', '60', '90']).transform(val => parseInt(val)),
+});
+exports.sessionsRouter.get('/me', auth_1.requireAuth, async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const role = req.user.role;
+        const status = req.query.status;
+        const where = {};
+        if (role === 'STUDENT') {
+            where.studentId = userId;
+        }
+        else if (role === 'TUTOR') {
+            where.tutorId = userId;
+        }
+        if (status) {
+            where.status = status;
+        }
+        const sessions = await prisma_1.prisma.session.findMany({
+            where,
+            include: {
+                tutor: { select: { email: true, avatarUrl: true, tutorProfile: { select: { hourlyRate: true, subjects: true } } } },
+                student: { select: { email: true, avatarUrl: true } }
+            },
+            orderBy: { datetime: 'asc' }
+        });
+        res.json({ sessions });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.sessionsRouter.get('/:id', auth_1.requireAuth, async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        const session = await prisma_1.prisma.session.findUnique({
+            where: { id },
+            include: {
+                tutor: { select: { email: true, avatarUrl: true, tutorProfile: { select: { hourlyRate: true, subjects: true } } } },
+                student: { select: { email: true, avatarUrl: true } }
+            }
+        });
+        if (!session || (session.studentId !== userId && session.tutorId !== userId)) {
+            res.status(403).json({ error: 'Not authorized' });
+            return;
+        }
+        let clientSecret;
+        if (session.status === 'PENDING' && session.stripePaymentIntentId && session.studentId === userId) {
+            const paymentIntent = await stripe.paymentIntents.retrieve(session.stripePaymentIntentId);
+            clientSecret = paymentIntent.client_secret || undefined;
+        }
+        res.json({ session, clientSecret });
+    }
+    catch (error) {
+        next(error);
+    }
 });
 exports.sessionsRouter.post('/', auth_1.requireAuth, (0, auth_1.requireRole)('STUDENT'), async (req, res, next) => {
     try {
@@ -240,35 +295,6 @@ exports.sessionsRouter.delete('/:id', auth_1.requireAuth, (0, auth_1.requireRole
             refundAmountCents,
             session: updatedSession
         });
-    }
-    catch (error) {
-        next(error);
-    }
-});
-exports.sessionsRouter.get('/me', auth_1.requireAuth, async (req, res, next) => {
-    try {
-        const userId = req.user.id;
-        const role = req.user.role;
-        const status = req.query.status;
-        const where = {};
-        if (role === 'STUDENT') {
-            where.studentId = userId;
-        }
-        else if (role === 'TUTOR') {
-            where.tutorId = userId;
-        }
-        if (status) {
-            where.status = status;
-        }
-        const sessions = await prisma_1.prisma.session.findMany({
-            where,
-            include: {
-                tutor: { select: { email: true, avatarUrl: true, tutorProfile: { select: { hourlyRate: true, subjects: true } } } },
-                student: { select: { email: true, avatarUrl: true } }
-            },
-            orderBy: { datetime: 'asc' }
-        });
-        res.json({ sessions });
     }
     catch (error) {
         next(error);
