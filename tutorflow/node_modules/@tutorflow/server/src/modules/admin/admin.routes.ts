@@ -145,3 +145,28 @@ adminRouter.get('/stats', async (req: Request, res: Response, next: NextFunction
     next(error);
   }
 });
+
+adminRouter.get('/users', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const role = req.query.role as string;
+    const users = await prisma.user.findMany({
+      where: role && role !== 'ALL' ? { role: role as any } : undefined,
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        tutorProfile: {
+          select: {
+            id: true,
+            isVerified: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ users });
+  } catch (error) {
+    next(error);
+  }
+});

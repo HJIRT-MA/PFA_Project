@@ -7,7 +7,7 @@ import { NotificationBell } from './components/NotificationBell';
 import { Button } from './components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from './components/ui/popover';
-import { User, LogOut, LayoutDashboard, Settings } from 'lucide-react';
+import { LogOut, LayoutDashboard, Settings } from 'lucide-react';
 
 function App() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -63,15 +63,15 @@ function App() {
               <div className="h-6 w-[1px] bg-border mx-1" />
               
               <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 border-2 border-primary/10 hover:border-primary/30 transition-all overflow-hidden">
+                <PopoverTrigger render={
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 border-2 border-primary/10 hover:border-primary/30 transition-all overflow-hidden" />
+                }>
                     <Avatar className="h-full w-full">
                       <AvatarImage src={user.avatarUrl || undefined} alt={user.email} />
                       <AvatarFallback className="bg-primary/5 text-primary font-bold">
                         {user.email.substring(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                  </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-64 p-2 rounded-3xl border-none shadow-2xl mt-2 mr-4 overflow-hidden" align="end">
                   <div className="p-4 border-b mb-2">
@@ -99,7 +99,7 @@ function App() {
                     <Button 
                       variant="ghost" 
                       className="w-full justify-start rounded-xl font-bold h-11 gap-3 text-destructive hover:bg-destructive/5 hover:text-destructive transition-all" 
-                      onClick={() => logout()}
+                      onClick={() => { logout(); navigate('/login'); }}
                     >
                       <LogOut className="w-4 h-4" />
                       Log out

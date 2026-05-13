@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+require("dotenv/config");
 const express_1 = __importDefault(require("express"));
 const helmet_1 = __importDefault(require("helmet"));
 const cors_1 = __importDefault(require("cors"));
@@ -40,6 +41,9 @@ app.use('/api/notifications', notifications_routes_1.notificationsRouter);
 app.use('/api/users', users_routes_1.usersRouter);
 app.use('/api/disputes', disputes_routes_1.disputesRouter);
 // Routes
+app.get('/', (req, res) => {
+    res.json({ message: 'TutorFlow API is running', health: '/health' });
+});
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });

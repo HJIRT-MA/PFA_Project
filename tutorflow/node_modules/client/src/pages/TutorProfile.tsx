@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Star, MessageCircle, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { Star, MessageCircle, Clock } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -223,10 +223,10 @@ export const TutorProfile = () => {
                   
                   <div className="space-y-4">
                     <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
-                      <DialogTrigger asChild>
-                        <Button className="w-full h-16 rounded-2xl text-xl font-black shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all hover:-translate-y-1">
-                          Book Now
-                        </Button>
+                      <DialogTrigger render={
+                        <Button className="w-full h-16 rounded-2xl text-xl font-black shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all hover:-translate-y-1" />
+                      }>
+                        Book Now
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-md rounded-[2.5rem] p-8 border-none shadow-2xl">
                         <DialogHeader>

@@ -4,69 +4,69 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 42 45% 96%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 222 47% 11%;
 
-    /* University Navy */
-    --primary: 221 73% 22%;
+    /* Oxford Blue */
+    --primary: 212 100% 14%;
     --primary-foreground: 210 40% 98%;
 
-    /* Academic Gold */
-    --secondary: 33 63% 60%;
-    --secondary-foreground: 221 73% 15%;
+    /* Crimson Accent */
+    --secondary: 351 71% 38%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 210 20% 94%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 42 20% 90%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 33 63% 60%;
-    --accent-foreground: 221 73% 15%;
+    --accent: 351 71% 38%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221 73% 22%;
+    --border: 214 32% 85%;
+    --input: 214 32% 85%;
+    --ring: 212 100% 14%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 222 47% 11%;
+    --foreground: 42 45% 96%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 42 45% 96%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 42 45% 96%;
 
-    /* Lighter Navy/Blue for Dark Mode */
-    --primary: 221 73% 60%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Lighter Oxford Blue */
+    --primary: 212 80% 60%;
+    --primary-foreground: 222 47% 11%;
 
-    /* Academic Gold */
-    --secondary: 33 63% 60%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Crimson Accent */
+    --secondary: 351 71% 48%;
+    --secondary-foreground: 42 45% 96%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 33 63% 60%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 351 71% 48%;
+    --accent-foreground: 42 45% 96%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 221 73% 60%;
+    --border: 217 33% 18%;
+    --input: 217 33% 18%;
+    --ring: 212 80% 60%;
   }
 }
 
@@ -75,9 +75,14 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    background-image: radial-gradient(circle at 2px 2px, hsl(var(--primary) / 0.03) 1px, transparent 0);
-    background-size: 32px 32px;
+    @apply bg-background text-foreground font-sans;
+    background-image: 
+      linear-gradient(90deg, transparent 79px, rgba(165, 28, 48, 0.15) 79px, rgba(165, 28, 48, 0.15) 81px, transparent 81px),
+      linear-gradient(transparent 1.5em, rgba(0, 33, 71, 0.08) 1.5em, rgba(0, 33, 71, 0.08) calc(1.5em + 1px), transparent calc(1.5em + 1px));
+    background-size: 100% 1.5em;
     background-attachment: fixed;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
   }
 }

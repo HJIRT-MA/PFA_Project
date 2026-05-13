@@ -18,7 +18,9 @@ exports.sessionsRouter = (0, express_1.Router)();
 const createSessionSchema = zod_1.z.object({
     tutorId: zod_1.z.string().uuid(),
     datetime: zod_1.z.string().datetime(),
-    durationMin: zod_1.z.enum(['30', '60', '90']).transform(val => parseInt(val)),
+    durationMin: zod_1.z.coerce.number().refine(val => [30, 60, 90].includes(val), {
+        message: "Duration must be 30, 60, or 90 minutes"
+    }),
 });
 exports.sessionsRouter.get('/me', auth_1.requireAuth, async (req, res, next) => {
     try {

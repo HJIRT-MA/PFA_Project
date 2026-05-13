@@ -16,6 +16,7 @@ import { TutorStats } from './pages/TutorStats'
 import { AdminTutors } from './pages/AdminTutors'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { AdminDisputes } from './pages/AdminDisputes'
+import { AdminUsers } from './pages/AdminUsers'
 import { Notifications } from './pages/Notifications'
 import { NotificationSettings } from './pages/NotificationSettings'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -29,10 +30,6 @@ const router = createBrowserRouter([
     element: <App />,
     children: [
       {
-        index: true,
-        element: <Search />,
-      },
-      {
         path: 'login',
         element: <Login />,
       },
@@ -41,16 +38,20 @@ const router = createBrowserRouter([
         element: <Register />,
       },
       {
-        path: 'search',
-        element: <Search />,
-      },
-      {
-        path: 'tutors/:id',
-        element: <TutorProfile />,
-      },
-      {
         element: <ProtectedRoute />,
         children: [
+          {
+            index: true,
+            element: <Search />,
+          },
+          {
+            path: 'search',
+            element: <Search />,
+          },
+          {
+            path: 'tutors/:id',
+            element: <TutorProfile />,
+          },
           {
             path: 'dashboard',
             element: <Dashboard />,
@@ -86,6 +87,10 @@ const router = createBrowserRouter([
           {
             path: 'admin/disputes',
             element: <AdminDisputes />,
+          },
+          {
+            path: 'admin/users',
+            element: <AdminUsers />,
           },
           {
             path: 'notifications',

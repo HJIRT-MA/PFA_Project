@@ -57,10 +57,11 @@ export const AdminDashboard = () => {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <Card>
+        <Card className="cursor-pointer hover:bg-primary/5 transition-colors" onClick={() => navigate('/admin/users')}>
           <CardHeader className="p-4 pb-2"><CardTitle className="text-xs text-muted-foreground">Total Users</CardTitle></CardHeader>
           <CardContent className="p-4 pt-0">
             <div className="text-2xl font-bold">{stats.totalUsers.students + stats.totalUsers.tutors}</div>
+            <p className="text-xs text-muted-foreground mt-1">{stats.totalUsers.students} students · {stats.totalUsers.tutors} tutors</p>
           </CardContent>
         </Card>
         <Card>

@@ -130,3 +130,28 @@ exports.adminRouter.get('/stats', async (req, res, next) => {
         next(error);
     }
 });
+exports.adminRouter.get('/users', async (req, res, next) => {
+    try {
+        const role = req.query.role;
+        const users = await prisma_1.prisma.user.findMany({
+            where: role && role !== 'ALL' ? { role: role } : undefined,
+            select: {
+                id: true,
+                email: true,
+                role: true,
+                createdAt: true,
+                tutorProfile: {
+                    select: {
+                        id: true,
+                        isVerified: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json({ users });
+    }
+    catch (error) {
+        next(error);
+    }
+});

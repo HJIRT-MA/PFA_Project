@@ -7,6 +7,119 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                String                   @id @default(uuid())
+  email             String                   @unique
+  passwordHash      String?
+  role              Role                     @default(STUDENT)
+  googleId          String?                  @unique
+  avatarUrl         String?
+  createdAt         DateTime                 @default(now())
+  disputesOpened    Dispute[]
+  messagesReceived  Message[]                @relation("MessagesReceived")
+  messagesSent      Message[]                @relation("MessagesSent")
+  notifications     Notification[]
+  notificationPrefs NotificationPreferences?
+  reviewsAsStudent  Review[]                 @relation("StudentReviews")
+  reviewsAsTutor    Review[]                 @relation("TutorReviews")
+  sessionsAsStudent Session[]                @relation("StudentSessions")
+  sessionsAsTutor   Session[]                @relation("TutorSessions")
+  tutorProfile      TutorProfile?
+}
+
+model TutorProfile {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  bio           String
+  subjects      String[]
+  hourlyRate    Float
+  isVerified    Boolean  @default(false)
+  availability  Json?
+  averageRating Float    @default(0)
+  reviewCount   Int      @default(0)
+  user          User     @relation(fields: [userId], references: [id])
+}
+
+model Session {
+  id                    String        @id @default(uuid())
+  studentId             String
+  tutorId               String
+  datetime              DateTime
+  durationMin           Int
+  status                SessionStatus @default(PENDING)
+  amountCents           Int
+  stripePaymentIntentId String?
+  disputes              Dispute[]
+  messages              Message[]
+  review                Review?
+  student               User          @relation("StudentSessions", fields: [studentId], references: [id])
+  tutor                 User          @relation("TutorSessions", fields: [tutorId], references: [id])
+}
+
+model Message {
+  id         String    @id @default(uuid())
+  senderId   String
+  receiverId String
+  sessionId  String?
+  content    String
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+  receiver   User      @relation("MessagesReceived", fields: [receiverId], references: [id])
+  sender     User      @relation("MessagesSent", fields: [senderId], references: [id])
+  session    Session?  @relation(fields: [sessionId], references: [id])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  sessionId String   @unique
+  studentId String
+  tutorId   String
+  rating    Int
+  comment   String
+  isFlagged Boolean  @default(false)
+  createdAt DateTime @default(now())
+  session   Session  @relation(fields: [sessionId], references: [id])
+  student   User     @relation("StudentReviews", fields: [studentId], references: [id])
+  tutor     User     @relation("TutorReviews", fields: [tutorId], references: [id])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id])
+}
+
+model NotificationPreferences {
+  userId          String  @id
+  emailOnBooking  Boolean @default(true)
+  emailOnMessage  Boolean @default(true)
+  emailOnReminder Boolean @default(true)
+  pushOnBooking   Boolean @default(true)
+  pushOnMessage   Boolean @default(true)
+  pushOnReminder  Boolean @default(true)
+  user            User    @relation(fields: [userId], references: [id])
+}
+
+model Dispute {
+  id          String        @id @default(uuid())
+  sessionId   String
+  openedBy    String
+  reason      String
+  description String
+  status      DisputeStatus @default(OPEN)
+  resolution  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  opener      User          @relation(fields: [openedBy], references: [id])
+  session     Session       @relation(fields: [sessionId], references: [id])
+}
+
 enum Role {
   STUDENT
   TUTOR
@@ -20,85 +133,6 @@ enum SessionStatus {
   COMPLETED
 }
 
-model User {
-  id           String        @id @default(uuid())
-  email        String        @unique
-  passwordHash String?
-  role         Role          @default(STUDENT)
-  googleId     String?       @unique
-  avatarUrl    String?
-  createdAt    DateTime      @default(now())
-
-  tutorProfile TutorProfile?
-  sessionsAsStudent Session[] @relation("StudentSessions")
-  sessionsAsTutor   Session[] @relation("TutorSessions")
-  messagesSent      Message[] @relation("MessagesSent")
-  messagesReceived  Message[] @relation("MessagesReceived")
-  reviewsAsStudent  Review[]  @relation("StudentReviews")
-  reviewsAsTutor    Review[]  @relation("TutorReviews")
-
-  notifications     Notification[]
-  notificationPrefs NotificationPreferences?
-  disputesOpened    Dispute[]
-}
-
-model TutorProfile {
-  id            String   @id @default(uuid())
-  userId        String   @unique
-  user          User     @relation(fields: [userId], references: [id])
-  bio           String
-  subjects      String[]
-  hourlyRate    Float
-  isVerified    Boolean  @default(false)
-  availability  Json?
-  averageRating Float    @default(0)
-  reviewCount   Int      @default(0)
-}
-
-model Session {
-  id          String        @id @default(uuid())
-  studentId   String
-  tutorId     String
-  student     User          @relation("StudentSessions", fields: [studentId], references: [id])
-  tutor       User          @relation("TutorSessions", fields: [tutorId], references: [id])
-  datetime    DateTime
-  durationMin Int
-  status      SessionStatus @default(PENDING)
-  amountCents Int
-  stripePaymentIntentId String?
-
-  messages    Message[]
-  review      Review?
-  disputes    Dispute[]
-}
-
-model Message {
-  id         String   @id @default(uuid())
-  senderId   String
-  receiverId String
-  sessionId  String?
-  sender     User     @relation("MessagesSent", fields: [senderId], references: [id])
-  receiver   User     @relation("MessagesReceived", fields: [receiverId], references: [id])
-  session    Session? @relation(fields: [sessionId], references: [id])
-  content    String
-  readAt     DateTime?
-  createdAt  DateTime @default(now())
-}
-
-model Review {
-  id         String   @id @default(uuid())
-  sessionId  String   @unique
-  studentId  String
-  tutorId    String
-  session    Session  @relation(fields: [sessionId], references: [id])
-  student    User     @relation("StudentReviews", fields: [studentId], references: [id])
-  tutor      User     @relation("TutorReviews", fields: [tutorId], references: [id])
-  rating     Int
-  comment    String
-  isFlagged  Boolean  @default(false)
-  createdAt  DateTime @default(now())
-}
-
 enum NotificationType {
   BOOKING_REQUEST
   BOOKING_CONFIRMED
@@ -109,48 +143,8 @@ enum NotificationType {
   REVIEW_REQUEST
 }
 
-model Notification {
-  id        String           @id @default(uuid())
-  userId    String
-  type      NotificationType
-  title     String
-  body      String
-  link      String?
-  readAt    DateTime?
-  createdAt DateTime         @default(now())
-
-  user      User @relation(fields: [userId], references: [id])
-}
-
-model NotificationPreferences {
-  userId          String  @id
-  emailOnBooking  Boolean @default(true)
-  emailOnMessage  Boolean @default(true)
-  emailOnReminder Boolean @default(true)
-  pushOnBooking   Boolean @default(true)
-  pushOnMessage   Boolean @default(true)
-  pushOnReminder  Boolean @default(true)
-
-  user            User @relation(fields: [userId], references: [id])
-}
-
 enum DisputeStatus {
   OPEN
   UNDER_REVIEW
   RESOLVED
-}
-
-model Dispute {
-  id          String        @id @default(uuid())
-  sessionId   String
-  openedBy    String        // User ID
-  reason      String
-  description String
-  status      DisputeStatus @default(OPEN)
-  resolution  String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  session     Session @relation(fields: [sessionId], references: [id])
-  opener      User    @relation(fields: [openedBy], references: [id])
 }
