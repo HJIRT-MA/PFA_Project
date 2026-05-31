@@ -1,5 +1,7 @@
+"use client";
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
@@ -8,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export const NotificationBell = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const { data } = useQuery({
@@ -53,18 +55,16 @@ export const NotificationBell = () => {
 
   return (
     <Popover>
-      <PopoverTrigger>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="w-5 h-5" />
-          {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white font-bold">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
-        </Button>
+      <PopoverTrigger className="relative inline-flex items-center justify-center rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground h-10 w-10">
+        <Bell className="w-5 h-5" />
+        {unreadCount > 0 && (
+          <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white font-bold animate-pulse-soft">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0">
-        <div className="flex items-center justify-between p-4 border-b">
+      <PopoverContent align="end" className="w-80 p-0 rounded-2xl shadow-elevated border-border/40 animate-fade-in-up overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b border-border/40">
           <h3 className="font-semibold">Notifications</h3>
           {unreadCount > 0 && (
             <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => markAllRead.mutate()}>
@@ -79,10 +79,10 @@ export const NotificationBell = () => {
             notifications.slice(0, 10).map((n: any) => (
               <div 
                 key={n.id} 
-                className={`p-4 border-b cursor-pointer hover:bg-muted/50 ${!n.readAt ? 'bg-primary/5' : ''}`}
+                className={`p-4 border-b border-border/30 cursor-pointer hover:bg-muted/40 transition-colors duration-200 ${!n.readAt ? 'bg-primary/5' : ''}`}
                 onClick={() => {
                   if (!n.readAt) markRead.mutate(n.id);
-                  if (n.link) navigate(n.link);
+                  if (n.link) router.push(n.link);
                 }}
               >
                 <div className="flex justify-between items-start mb-1">
@@ -97,8 +97,8 @@ export const NotificationBell = () => {
             ))
           )}
         </div>
-        <div className="p-2 border-t">
-          <Button variant="ghost" className="w-full text-xs" onClick={() => navigate('/notifications')}>
+        <div className="p-2 border-t border-border/40">
+          <Button variant="ghost" className="w-full text-xs" onClick={() => router.push('/notifications')}>
             View all notifications
           </Button>
         </div>

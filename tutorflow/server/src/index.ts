@@ -22,7 +22,7 @@ import { setupSocketIO } from './socket';
 
 // Middleware
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
+app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000' }));
 app.use(morgan('dev'));
 
 // Stripe webhook needs raw body

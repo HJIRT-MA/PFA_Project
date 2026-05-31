@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect, useRef } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -57,8 +58,15 @@ export const ChatDrawer = ({ open, onOpenChange, defaultUserId, defaultUserName 
         queryClient.invalidateQueries({ queryKey: ['conversations'] });
         
         if (activeUser && (msg.senderId === activeUser.id || msg.receiverId === activeUser.id)) {
-          queryClient.setQueryData(['messages', activeUser.id], (old: any) => [...(old || []), msg]);
-          if (msg.senderId === activeUser.id) {
+          queryClient.setQueryData(['messages', activeUser.id], (old: any) => {
+            // Prevent duplicate messages if 'message_saved' and 'new_message' race
+            const currentMsgs = old || [];
+            if (currentMsgs.find((m: any) => m.id === msg.id)) return currentMsgs;
+            return [...currentMsgs, msg];
+          });
+          
+          // The RECEIVER should mark the message as read, not the sender
+          if (msg.receiverId === user?.id && msg.senderId === activeUser.id) {
             socket.emit('mark_read', { messageId: msg.id });
           }
         }
@@ -109,10 +117,10 @@ export const ChatDrawer = ({ open, onOpenChange, defaultUserId, defaultUserName 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md p-0 flex flex-col h-full">
+      <SheetContent className="w-full sm:max-w-md p-0 flex flex-col h-full border-l border-border/40">
         {!activeUser ? (
           <div className="flex flex-col h-full">
-            <SheetHeader className="p-4 border-b">
+            <SheetHeader className="p-5 border-b border-border/40">
               <SheetTitle>Messages</SheetTitle>
             </SheetHeader>
             <div className="flex-1 overflow-y-auto">
@@ -123,7 +131,7 @@ export const ChatDrawer = ({ open, onOpenChange, defaultUserId, defaultUserName 
                   {convos.map((conv: any) => (
                     <div 
                       key={conv.user.id} 
-                      className="p-4 border-b hover:bg-muted/50 cursor-pointer flex items-center gap-3"
+                      className="p-4 border-b border-border/30 hover:bg-muted/40 cursor-pointer flex items-center gap-3 transition-colors duration-200"
                       onClick={() => setActiveUser({ id: conv.user.id, name: conv.user.email.split('@')[0] })}
                     >
                       <Avatar>
@@ -149,7 +157,7 @@ export const ChatDrawer = ({ open, onOpenChange, defaultUserId, defaultUserName 
           </div>
         ) : (
           <div className="flex flex-col h-full bg-muted/20">
-            <div className="p-4 border-b bg-background flex items-center gap-3">
+            <div className="p-4 border-b border-border/40 bg-background flex items-center gap-3">
               <Button variant="ghost" size="icon" className="-ml-2" onClick={() => setActiveUser(null)}>
                 <ArrowLeft className="w-5 h-5" />
               </Button>
@@ -164,7 +172,7 @@ export const ChatDrawer = ({ open, onOpenChange, defaultUserId, defaultUserName 
                 const isMine = msg.senderId === user?.id;
                 return (
                   <div key={msg.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                    <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${isMine ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'}`}>
+                    <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${isMine ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-tr-sm shadow-sm' : 'bg-muted/70 text-foreground rounded-tl-sm shadow-sm'}`}>
                       <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                     </div>
                     <div className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
@@ -179,7 +187,7 @@ export const ChatDrawer = ({ open, onOpenChange, defaultUserId, defaultUserName 
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-3 bg-background border-t">
+            <div className="p-3 bg-background border-t border-border/40">
               <div className="flex items-end gap-2">
                 <Textarea 
                   value={msgContent}
@@ -189,7 +197,7 @@ export const ChatDrawer = ({ open, onOpenChange, defaultUserId, defaultUserName 
                   className="min-h-[40px] max-h-32 py-3 resize-none"
                   rows={1}
                 />
-                <Button size="icon" className="shrink-0" onClick={handleSend} disabled={!msgContent.trim()}>
+                <Button size="icon" className="shrink-0 shadow-sm hover:shadow-md transition-all duration-200" onClick={handleSend} disabled={!msgContent.trim()}>
                   <Send className="w-4 h-4" />
                 </Button>
               </div>

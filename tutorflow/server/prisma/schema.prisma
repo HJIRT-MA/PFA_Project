@@ -127,6 +127,7 @@ enum Role {
 }
 
 enum SessionStatus {
+  AWAITING_PAYMENT
   PENDING
   CONFIRMED
   CANCELLED

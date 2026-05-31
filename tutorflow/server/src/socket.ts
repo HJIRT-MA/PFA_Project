@@ -2,12 +2,14 @@ import { Server as SocketIOServer } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import jwt from 'jsonwebtoken';
 import { prisma } from './lib/prisma';
+import { notificationService } from './services/notification.service';
+import { NotificationType } from '@prisma/client';
 
 export let io: SocketIOServer;
 
 export const setupSocketIO = (httpServer: HttpServer) => {
   io = new SocketIOServer(httpServer, {
-    cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173' }
+    cors: { origin: process.env.CLIENT_URL || 'http://localhost:3000' }
   });
 
   io.use((socket, next) => {
@@ -34,10 +36,21 @@ export const setupSocketIO = (httpServer: HttpServer) => {
             receiverId: data.receiverId,
             content: data.content,
             sessionId: data.sessionId
-          }
+          },
+          include: { sender: true }
         });
+        
         io.to(`user:${data.receiverId}`).emit('new_message', msg);
         socket.emit('message_saved', msg);
+        
+        // Notify the receiver
+        await notificationService.createNotification(
+          data.receiverId,
+          NotificationType.NEW_MESSAGE,
+          `New message from ${msg.sender.email.split('@')[0]}`,
+          data.content.length > 50 ? `${data.content.substring(0, 50)}...` : data.content,
+          `/dashboard`
+        );
       } catch (err) {
         console.error(err);
       }

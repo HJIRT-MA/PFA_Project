@@ -1,8 +1,7 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   darkMode: ["class"],
   content: [
-    './index.html',
     './src/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
@@ -15,8 +14,8 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ['"Source Sans 3"', 'sans-serif'],
-        serif: ['"Playfair Display"', 'serif'],
+        sans: ['var(--font-sans)', 'Inter', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-heading)', '"Playfair Display"', 'Georgia', 'serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -60,5 +59,5 @@ module.exports = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [],
 }

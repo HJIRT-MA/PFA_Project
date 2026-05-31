@@ -4,6 +4,8 @@ import Stripe from 'stripe';
 import { Resend } from 'resend';
 import { prisma } from '../../lib/prisma';
 import { requireAuth, requireRole } from '../../middleware/auth';
+import { notificationService } from '../../services/notification.service';
+import { NotificationType } from '@prisma/client';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock', {
   apiVersion: '2023-10-16' as any, // Bypass strict version type check
@@ -72,7 +74,7 @@ sessionsRouter.get('/:id', requireAuth, async (req: Request, res: Response, next
     }
 
     let clientSecret: string | undefined;
-    if (session.status === 'PENDING' && session.stripePaymentIntentId && session.studentId === userId) {
+    if (session.status === 'AWAITING_PAYMENT' && session.stripePaymentIntentId && session.studentId === userId) {
       const paymentIntent = await stripe.paymentIntents.retrieve(session.stripePaymentIntentId);
       clientSecret = paymentIntent.client_secret || undefined;
     }
@@ -134,7 +136,7 @@ sessionsRouter.post('/', requireAuth, requireRole('STUDENT'), async (req: Reques
         datetime: newSessionStart,
         durationMin,
         amountCents,
-        status: 'PENDING',
+        status: 'AWAITING_PAYMENT',
       }
     });
 
@@ -155,6 +157,66 @@ sessionsRouter.post('/', requireAuth, requireRole('STUDENT'), async (req: Reques
       sessionId: session.id,
       clientSecret: paymentIntent.client_secret
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+sessionsRouter.post('/verify-payment', requireAuth, requireRole('STUDENT'), async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { paymentIntentId } = req.body;
+    const studentId = (req.user as any).id;
+
+    if (!paymentIntentId) {
+      res.status(400).json({ error: 'Missing paymentIntentId' });
+      return;
+    }
+
+    const session = await prisma.session.findFirst({
+      where: { stripePaymentIntentId: paymentIntentId, studentId },
+      include: { student: true, tutor: true }
+    });
+
+    if (!session) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+
+    if (session.status !== 'AWAITING_PAYMENT') {
+      res.json({ success: true, session }); // already processed
+      return;
+    }
+
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    if (paymentIntent.status === 'succeeded') {
+      const updatedSession = await prisma.session.update({
+        where: { id: session.id },
+        data: { status: 'PENDING' },
+        include: { student: true, tutor: true }
+      });
+
+      // Notify the tutor
+      await notificationService.createNotification(
+        updatedSession.tutorId,
+        NotificationType.BOOKING_REQUEST,
+        `New Booking Request`,
+        `${updatedSession.student.email.split('@')[0]} has requested a ${updatedSession.durationMin}-minute session.`,
+        '/dashboard'
+      );
+
+      // Send email
+      await resend.emails.send({
+        from: 'TutorFlow <noreply@tutorflow.com>',
+        to: [updatedSession.tutor.email],
+        subject: 'New Session Request',
+        html: `<p>You have a new session request on ${updatedSession.datetime} that requires your approval.</p>`
+      }).catch(console.error);
+
+      res.json({ success: true, session: updatedSession });
+    } else {
+      res.status(400).json({ error: 'Payment not successful yet' });
+    }
   } catch (error) {
     next(error);
   }
@@ -188,16 +250,25 @@ sessionsRouter.post('/webhook', async (req: Request, res: Response, next: NextFu
       if (sessionId) {
         const session = await prisma.session.update({
           where: { id: sessionId },
-          data: { status: 'CONFIRMED' },
+          data: { status: 'PENDING' },
           include: { student: true, tutor: true }
         });
+
+        // Notify the tutor
+        await notificationService.createNotification(
+          session.tutorId,
+          NotificationType.BOOKING_REQUEST,
+          `New Booking Request`,
+          `${session.student.email.split('@')[0]} has requested a ${session.durationMin}-minute session.`,
+          '/dashboard'
+        );
 
         // Send email
         await resend.emails.send({
           from: 'TutorFlow <noreply@tutorflow.com>',
-          to: [session.student.email, session.tutor.email],
-          subject: 'Session Confirmed',
-          html: `<p>Session on ${session.datetime} has been confirmed.</p>`
+          to: [session.tutor.email],
+          subject: 'New Session Request',
+          html: `<p>You have a new session request on ${session.datetime} that requires your approval.</p>`
         }).catch(console.error);
       }
     } else if (event.type === 'payment_intent.payment_failed') {
@@ -233,12 +304,26 @@ sessionsRouter.patch('/:id/accept', requireAuth, requireRole('TUTOR'), async (re
       return;
     }
 
-    if (session.status !== 'CONFIRMED') {
-      res.status(400).json({ error: 'Session must be CONFIRMED to accept' });
+    if (session.status !== 'PENDING') {
+      res.status(400).json({ error: 'Session must be PENDING to accept' });
       return;
     }
 
-    // No-op for status, just notify student
+    const updatedSession = await prisma.session.update({
+      where: { id },
+      data: { status: 'CONFIRMED' }
+    });
+
+    // Notify student via push notification
+    await notificationService.createNotification(
+      session.studentId,
+      NotificationType.BOOKING_CONFIRMED,
+      'Session Accepted',
+      `Your session on ${new Date(session.datetime).toLocaleDateString()} has been accepted.`,
+      '/dashboard'
+    );
+
+    // Notify student
     await resend.emails.send({
       from: 'TutorFlow <noreply@tutorflow.com>',
       to: [session.student.email],
@@ -246,7 +331,7 @@ sessionsRouter.patch('/:id/accept', requireAuth, requireRole('TUTOR'), async (re
       html: `<p>Your tutor has acknowledged your upcoming session.</p>`
     }).catch(console.error);
 
-    res.json({ success: true, session });
+    res.json({ success: true, session: updatedSession });
   } catch (error) {
     next(error);
   }
@@ -278,6 +363,15 @@ sessionsRouter.patch('/:id/decline', requireAuth, requireRole('TUTOR'), async (r
       where: { id },
       data: { status: 'CANCELLED' }
     });
+
+    // Notify student via push notification
+    await notificationService.createNotification(
+      session.studentId,
+      NotificationType.BOOKING_CANCELLED,
+      'Session Declined',
+      `Your tutor declined the session. Reason: ${reason}. Your payment will be refunded.`,
+      '/dashboard'
+    );
 
     await resend.emails.send({
       from: 'TutorFlow <noreply@tutorflow.com>',
@@ -334,6 +428,44 @@ sessionsRouter.delete('/:id', requireAuth, requireRole('STUDENT'), async (req: R
       refundAmountCents,
       session: updatedSession
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+sessionsRouter.patch('/:id/complete', requireAuth, requireRole('TUTOR'), async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const tutorId = (req.user as any).id;
+
+    const session = await prisma.session.findUnique({
+      where: { id },
+      include: { student: true }
+    });
+
+    if (!session || session.tutorId !== tutorId) {
+      res.status(403).json({ error: 'Not authorized' });
+      return;
+    }
+
+    if (session.status !== 'CONFIRMED') {
+      res.status(400).json({ error: 'Session must be CONFIRMED to be marked as completed' });
+      return;
+    }
+
+    const updatedSession = await prisma.session.update({
+      where: { id },
+      data: { status: 'COMPLETED' }
+    });
+
+    await resend.emails.send({
+      from: 'TutorFlow <noreply@tutorflow.com>',
+      to: [session.student.email],
+      subject: 'Session Completed - Please leave a review',
+      html: `<p>Your session has been marked as completed. Please leave a review for your tutor!</p>`
+    }).catch(console.error);
+
+    res.json({ success: true, session: updatedSession });
   } catch (error) {
     next(error);
   }

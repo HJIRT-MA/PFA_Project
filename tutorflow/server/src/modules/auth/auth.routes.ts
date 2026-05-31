@@ -94,7 +94,7 @@ authRouter.get(
     }
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
 
     if (user.isNewUser) {
       // Redirect to onboarding/role selection with token

@@ -9,7 +9,7 @@ export const initSocket = () => {
   const token = useAuthStore.getState().token;
   if (!token) return null;
 
-  socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3000', {
+  socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001', {
     auth: { token }
   });
 

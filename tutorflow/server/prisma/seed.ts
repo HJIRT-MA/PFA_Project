@@ -5,6 +5,9 @@ const prisma = new PrismaClient();
 
 async function main() {
   // Clear existing data
+  await prisma.dispute.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.notificationPreferences.deleteMany();
   await prisma.review.deleteMany();
   await prisma.message.deleteMany();
   await prisma.session.deleteMany();
