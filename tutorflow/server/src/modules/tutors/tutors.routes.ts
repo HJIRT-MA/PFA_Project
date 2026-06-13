@@ -131,6 +131,7 @@ tutorsRouter.get('/me/stats', requireAuth, requireRole('TUTOR'), async (req: Req
     res.json({
       averageRating: profile.averageRating,
       totalReviews: profile.reviewCount,
+      profileViews: profile.profileViews,
       ratingBreakdown,
       responseRate,
       totalEarnings: {
@@ -199,6 +200,33 @@ tutorsRouter.get('/:id', async (req: Request, res: Response, next: NextFunction)
       reviewsTotalPages: Math.ceil(totalReviews / limit)
     });
   } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/tutors/:id/view
+tutorsRouter.post('/:id/view', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    
+    // Ignore if it's the tutor viewing their own profile
+    const currentUserId = (req as any).user?.id;
+    if (currentUserId === id) {
+      res.status(200).json({ success: true, ignored: true });
+      return;
+    }
+
+    await prisma.tutorProfile.update({
+      where: { userId: id },
+      data: { profileViews: { increment: 1 } }
+    });
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    if ((error as any).code === 'P2025') {
+      res.status(404).json({ error: 'Tutor not found' });
+      return;
+    }
     next(error);
   }
 });

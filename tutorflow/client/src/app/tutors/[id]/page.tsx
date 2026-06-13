@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -33,6 +33,15 @@ const TutorProfile = () => {
       return res.data;
     }
   });
+
+  // Track profile view with a ref guard to prevent double-counting in React Strict Mode
+  const hasTrackedView = useRef(false);
+  useEffect(() => {
+    if (id && !hasTrackedView.current) {
+      hasTrackedView.current = true;
+      api.post(`/api/tutors/${id}/view`).catch(err => console.error('Failed to track view', err));
+    }
+  }, [id]);
 
   const bookMutation = useMutation({
     mutationFn: async () => {
@@ -86,13 +95,13 @@ const TutorProfile = () => {
         <div className="container mx-auto px-6 py-16 max-w-6xl">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-10">
             <div className="relative">
-              <Avatar className="h-40 w-40 border-4 border-white shadow-xl">
+              <Avatar className="h-40 w-40 border-4 border-background shadow-xl">
                 <AvatarImage src={tutor.avatarUrl || undefined} alt={tutor.name} />
                 <AvatarFallback className="text-5xl font-black bg-primary/10 text-primary">
                   {tutor.name.substring(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute bottom-2 right-2 h-6 w-6 rounded-full bg-green-500 border-4 border-white" />
+              <div className="absolute bottom-2 right-2 h-6 w-6 rounded-full bg-green-500 border-4 border-background" />
             </div>
             
             <div className="flex-1 text-center md:text-left pt-4">
@@ -122,7 +131,7 @@ const TutorProfile = () => {
 
               <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-8">
                 {tutor.subjects.map((subject: string) => (
-                  <Badge key={subject} className="bg-white shadow-sm text-foreground hover:bg-primary/5 transition-colors px-4 py-1.5 rounded-full font-bold border-none text-sm">
+                  <Badge key={subject} className="bg-card shadow-sm text-foreground hover:bg-primary/5 transition-colors px-4 py-1.5 rounded-full font-bold border-none text-sm">
                     {subject}
                   </Badge>
                 ))}
@@ -138,7 +147,7 @@ const TutorProfile = () => {
           {/* Main Content */}
           <div className="flex-1 space-y-12">
             {/* Bio */}
-            <section className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] border">
+            <section className="bg-card p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] border">
               <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
                 <span className="w-2 h-8 bg-primary rounded-full" />
                 About me
@@ -153,7 +162,7 @@ const TutorProfile = () => {
             </section>
 
             {/* Availability */}
-            <section className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] border">
+            <section className="bg-card p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] border">
               <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
                 <span className="w-2 h-8 bg-primary rounded-full" />
                 Availability
@@ -179,10 +188,10 @@ const TutorProfile = () => {
               {tutor.reviews && tutor.reviews.length > 0 ? (
                 <div className="grid gap-6">
                   {tutor.reviews.map((review: any) => (
-                    <div key={review.id} className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] border group hover:border-primary/20 transition-all">
+                    <div key={review.id} className="bg-card p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] border group hover:border-primary/20 transition-all">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center">
-                          <Avatar className="h-12 w-12 mr-4 border-2 border-white shadow-sm">
+                          <Avatar className="h-12 w-12 mr-4 border-2 border-card shadow-sm">
                             <AvatarImage src={review.avatarUrl || undefined} />
                             <AvatarFallback className="bg-muted font-bold">{review.studentName[0].toUpperCase()}</AvatarFallback>
                           </Avatar>
@@ -212,7 +221,7 @@ const TutorProfile = () => {
           {/* Sidebar Sticky Booking Card */}
           <div className="w-full lg:w-96 shrink-0">
             <div className="sticky top-24 space-y-6">
-              <div className="bg-white border-none shadow-[0_20px_50px_rgb(0,0,0,0.08)] rounded-[2.5rem] p-8 overflow-hidden relative">
+              <div className="bg-card border-none shadow-[0_20px_50px_rgb(0,0,0,0.08)] rounded-[2.5rem] p-8 overflow-hidden relative">
                 <div className="absolute top-0 right-0 p-8 opacity-5">
                   <svg className="w-32 h-32 text-primary" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
                 </div>
@@ -244,7 +253,7 @@ const TutorProfile = () => {
                               mode="single"
                               selected={date}
                               onSelect={setDate}
-                              className="rounded-2xl bg-white border shadow-sm"
+                              className="rounded-2xl bg-card border shadow-sm"
                               disabled={(d) => d < new Date()}
                             />
                           </div>
@@ -314,7 +323,7 @@ const TutorProfile = () => {
               {/* Stats / Quick Info */}
               <div className="bg-muted/30 p-8 rounded-[2rem] space-y-6">
                 <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-primary">
+                  <div className="h-10 w-10 bg-card rounded-xl shadow-sm flex items-center justify-center text-primary">
                     <Star className="w-5 h-5 fill-current" />
                   </div>
                   <div>
@@ -323,7 +332,7 @@ const TutorProfile = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-primary">
+                  <div className="h-10 w-10 bg-card rounded-xl shadow-sm flex items-center justify-center text-primary">
                     <MessageCircle className="w-5 h-5 fill-current" />
                   </div>
                   <div>

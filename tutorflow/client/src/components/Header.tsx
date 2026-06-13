@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -8,13 +8,39 @@ import { NotificationBell } from './NotificationBell';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { LogOut, LayoutDashboard, Settings, MessageCircle } from 'lucide-react';
+import { LogOut, LayoutDashboard, Settings, MessageCircle, Moon, Sun } from 'lucide-react';
 import { ChatDrawer } from './ChatDrawer';
 
 export function Header() {
   const { user, logout } = useAuthStore();
   const router = useRouter();
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isDarkSet = localStorage.getItem('theme') === 'dark' || 
+                        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      setIsDark(isDarkSet);
+      if (isDarkSet) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    const newMode = !isDark;
+    setIsDark(newMode);
+    if (newMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
 
   return (
     <header className="px-6 py-3 border-b border-border/40 flex justify-between items-center sticky top-0 glass z-50 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)]">
@@ -31,10 +57,20 @@ export function Header() {
             Find Tutors
             <span className="absolute -bottom-1.5 left-0 w-0 h-0.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-300 group-hover:w-full" />
           </Link>
+          {user && (
+            <Link href="/dashboard" className="relative text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors duration-200 group flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary group-hover:animate-pulse-soft transition-all" />
+              Dashboard
+              <span className="absolute -bottom-1.5 left-0 w-0 h-0.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-300 group-hover:w-full" />
+            </Link>
+          )}
         </nav>
       </div>
       
       <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary rounded-full transition-colors duration-200 mr-1" onClick={toggleDarkMode}>
+          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </Button>
         {user ? (
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary rounded-full transition-colors duration-200" onClick={() => setIsChatOpen(true)}>

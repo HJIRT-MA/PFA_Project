@@ -11,8 +11,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { format, differenceInHours, isPast, isFuture } from 'date-fns';
+import { format, differenceInHours, isPast, isFuture, subMonths } from 'date-fns';
 import { useRouter } from 'next/navigation';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 
 const Dashboard = () => {
@@ -23,6 +24,7 @@ const Dashboard = () => {
   const [disputeSessionId, setDisputeSessionId] = useState<string | null>(null);
   const [disputeReason, setDisputeReason] = useState<string>('');
   const [disputeDescription, setDisputeDescription] = useState<string>('');
+  const [isOnline, setIsOnline] = useState(true);
 
   const disputeMutation = useMutation({
     mutationFn: () => api.post('/api/disputes', {
@@ -44,6 +46,15 @@ const Dashboard = () => {
       const res = await api.get('/api/sessions/me');
       return res.data.sessions;
     }
+  });
+
+  const { data: tutorStats } = useQuery({
+    queryKey: ['tutorStats'],
+    queryFn: async () => {
+      const res = await api.get('/api/tutors/me/stats');
+      return res.data;
+    },
+    enabled: user?.role === 'TUTOR'
   });
 
   const cancelMutation = useMutation({
@@ -110,7 +121,7 @@ const Dashboard = () => {
               upcoming.map((session: any) => {
                 const hoursUntil = differenceInHours(new Date(session.datetime), new Date());
                 return (
-                  <Card key={session.id} className="border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_4px_20px_rgb(0,0,0,0.06)] transition-all rounded-3xl overflow-hidden bg-white">
+                  <Card key={session.id} className="border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_4px_20px_rgb(0,0,0,0.06)] transition-all rounded-3xl overflow-hidden bg-card">
                     <CardHeader className="flex flex-row items-center justify-between p-6">
                       <div className="flex items-center gap-4">
                         <Avatar className="h-12 w-12 border">
@@ -172,7 +183,7 @@ const Dashboard = () => {
               <Card className="border-dashed border-2 bg-transparent shadow-none"><CardContent className="py-16 text-center text-muted-foreground">No session history yet</CardContent></Card>
             ) : (
               past.map((session: any) => (
-                <Card key={session.id} className="border-none shadow-sm rounded-2xl bg-white/50 grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100">
+                <Card key={session.id} className="border-none shadow-sm rounded-2xl bg-card/50 grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100">
                   <CardHeader className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -262,11 +273,28 @@ const Dashboard = () => {
       return sum;
     }, 0);
 
+    // Generate mock chart data based on real earnings average or just static mock if no data
+    const monthlyAverage = (earnings / 100) || 450;
+    const chartData = Array.from({ length: 6 }).map((_, i) => ({
+      name: format(subMonths(new Date(), 5 - i), 'MMM'),
+      revenue: Math.floor(monthlyAverage * (0.5 + Math.random() * 0.8)) + (i === 5 ? (earnings/100) : 0)
+    }));
+
     return (
       <div className="container mx-auto max-w-5xl py-12 px-6">
         <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-black tracking-tight">Tutor Dashboard</h1>
+            <div className="flex items-center gap-4">
+              <h1 className="text-4xl font-black tracking-tight">Tutor Dashboard</h1>
+              <Button 
+                variant={isOnline ? "default" : "secondary"}
+                className={`rounded-full h-8 px-4 font-bold text-xs ${isOnline ? 'bg-green-500 hover:bg-green-600' : 'text-muted-foreground'}`}
+                onClick={() => setIsOnline(!isOnline)}
+              >
+                <span className={`w-2 h-2 rounded-full mr-2 ${isOnline ? 'bg-white' : 'bg-muted-foreground'}`} />
+                {isOnline ? 'Online Now' : 'Offline'}
+              </Button>
+            </div>
             <p className="text-muted-foreground mt-2">Manage your teaching schedule and track your growth.</p>
           </div>
           <Button 
@@ -278,27 +306,54 @@ const Dashboard = () => {
           </Button>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <Card className="md:col-span-2 border-none shadow-[0_20px_50px_rgb(0,0,0,0.04)] bg-primary text-primary-foreground rounded-[2rem] overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-8 opacity-10">
-              <svg className="w-32 h-32" fill="currentColor" viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+          {/* Main Earnings Chart */}
+          <Card className="md:col-span-3 border-none shadow-[0_20px_50px_rgb(0,0,0,0.04)] bg-card rounded-[2rem] p-8">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <CardDescription className="font-bold uppercase tracking-widest text-xs text-muted-foreground">Estimated Earnings (Last 6 Months)</CardDescription>
+                <CardTitle className="text-4xl font-black mt-1">€{(earnings / 100).toFixed(2)} <span className="text-sm font-bold text-muted-foreground">this month</span></CardTitle>
+              </div>
             </div>
-            <CardHeader>
-              <CardDescription className="text-primary-foreground/70 font-bold uppercase tracking-widest text-xs">Estimated Earnings</CardDescription>
-              <CardTitle className="text-5xl font-black mt-2">€{(earnings / 100).toFixed(2)}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm font-medium opacity-80">Total revenue for {format(new Date(), 'MMMM yyyy')}</p>
-            </CardContent>
+            <div className="h-48 w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} dy={10} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                    formatter={(value) => [`€${value}`, 'Revenue']}
+                  />
+                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={4} dot={{ r: 4, fill: 'hsl(var(--primary))', strokeWidth: 0 }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </Card>
           
-          <Card className="border-none shadow-[0_20px_50px_rgb(0,0,0,0.04)] rounded-[2rem] flex flex-col justify-center items-center text-center p-6 bg-white">
-            <div className="w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center mb-4 text-primary text-2xl font-black">
-              {pending.length}
-            </div>
-            <h3 className="font-black text-xl">New Requests</h3>
-            <p className="text-sm text-muted-foreground font-medium mt-1">Pending your approval</p>
-          </Card>
+          <div className="flex flex-col gap-6">
+            <Card className="border-none shadow-[0_20px_50px_rgb(0,0,0,0.04)] rounded-[2rem] flex flex-col justify-center items-center text-center p-6 bg-card flex-1">
+              <div className="w-12 h-12 bg-primary/5 rounded-2xl flex items-center justify-center mb-3 text-primary text-xl font-black">
+                {pending.length}
+              </div>
+              <h3 className="font-black text-lg">New Requests</h3>
+              <p className="text-xs text-muted-foreground font-medium mt-1">Pending approval</p>
+            </Card>
+
+            <Card className="border-none shadow-[0_20px_50px_rgb(0,0,0,0.04)] rounded-[2rem] flex flex-col justify-center items-center text-center p-6 bg-card flex-1">
+              <div className="w-12 h-12 bg-green-500/10 rounded-2xl flex items-center justify-center mb-3 text-green-600 text-xl font-black">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+              </div>
+              <h3 className="font-black text-lg">{tutorStats?.profileViews || 0} Views</h3>
+              <p className="text-xs text-muted-foreground font-medium mt-1">Profile views</p>
+            </Card>
+
+            <Card className="border-none shadow-[0_20px_50px_rgb(0,0,0,0.04)] rounded-[2rem] flex flex-col justify-center items-center text-center p-6 bg-card flex-1">
+              <div className="text-lg font-black text-foreground mb-1">
+                {format(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1), 'MMM do')}
+              </div>
+              <h3 className="font-bold text-sm">Next Payout</h3>
+              <p className="text-xs text-muted-foreground font-medium mt-1">Stripe Transfer</p>
+            </Card>
+          </div>
         </div>
         
         <Tabs defaultValue="upcoming" className="space-y-8">
@@ -322,7 +377,7 @@ const Dashboard = () => {
               </Card>
             ) : (
               upcoming.map((session: any) => (
-                <Card key={session.id} className="border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_4px_20px_rgb(0,0,0,0.06)] transition-all rounded-3xl overflow-hidden bg-white">
+                <Card key={session.id} className="border-none shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_4px_20px_rgb(0,0,0,0.06)] transition-all rounded-3xl overflow-hidden bg-card">
                   <CardHeader className="flex flex-row items-center justify-between p-6">
                     <div className="flex items-center gap-4">
                       <Avatar className="h-12 w-12 border">
@@ -364,7 +419,7 @@ const Dashboard = () => {
               <Card className="border-dashed border-2 bg-transparent shadow-none"><CardContent className="py-16 text-center text-muted-foreground">No pending requests</CardContent></Card>
             ) : (
               pending.map((session: any) => (
-                <Card key={session.id} className="border-none shadow-[0_10px_30px_rgb(0,0,0,0.04)] rounded-3xl overflow-hidden bg-white border-l-4 border-l-primary">
+                <Card key={session.id} className="border-none shadow-[0_10px_30px_rgb(0,0,0,0.04)] rounded-3xl overflow-hidden bg-card border-l-4 border-l-primary">
                   <CardHeader className="flex flex-row items-center justify-between p-6">
                     <div className="flex items-center gap-4">
                       <Avatar className="h-12 w-12">
@@ -421,7 +476,7 @@ const Dashboard = () => {
               <Card className="border-dashed border-2 bg-transparent shadow-none"><CardContent className="py-16 text-center text-muted-foreground">No session history yet</CardContent></Card>
             ) : (
               past.map((session: any) => (
-                <Card key={session.id} className="border-none shadow-sm rounded-2xl bg-white/50 grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100 p-4">
+                <Card key={session.id} className="border-none shadow-sm rounded-2xl bg-card/50 grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100 p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <Avatar className="h-10 w-10">

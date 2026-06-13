@@ -37,6 +37,7 @@ model TutorProfile {
   availability  Json?
   averageRating Float    @default(0)
   reviewCount   Int      @default(0)
+  profileViews  Int      @default(0)
   user          User     @relation(fields: [userId], references: [id])
 }
 
