@@ -52,6 +52,7 @@ model Session {
   stripePaymentIntentId String?
   disputes              Dispute[]
   messages              Message[]
+  resources             Resource[]
   review                Review?
   student               User          @relation("StudentSessions", fields: [studentId], references: [id])
   tutor                 User          @relation("TutorSessions", fields: [tutorId], references: [id])
@@ -119,6 +120,16 @@ model Dispute {
   updatedAt   DateTime      @updatedAt
   opener      User          @relation(fields: [openedBy], references: [id])
   session     Session       @relation(fields: [sessionId], references: [id])
+}
+
+model Resource {
+  id          String    @id @default(uuid())
+  sessionId   String
+  title       String
+  url         String
+  type        String    @default("link")
+  createdAt   DateTime  @default(now())
+  session     Session   @relation(fields: [sessionId], references: [id])
 }
 
 enum Role {

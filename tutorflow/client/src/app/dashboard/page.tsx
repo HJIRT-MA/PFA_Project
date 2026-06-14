@@ -25,6 +25,27 @@ const Dashboard = () => {
   const [disputeReason, setDisputeReason] = useState<string>('');
   const [disputeDescription, setDisputeDescription] = useState<string>('');
   const [isOnline, setIsOnline] = useState(true);
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
+  const [nearestUpcomingDate, setNearestUpcomingDate] = useState<Date | null>(null);
+  const [timeLeft, setTimeLeft] = useState<string>('');
+
+  useEffect(() => {
+    if (!nearestUpcomingDate) return;
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const distance = nearestUpcomingDate.getTime() - now;
+      if (distance < 0) {
+        setTimeLeft('Started');
+        clearInterval(interval);
+        return;
+      }
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+      setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [nearestUpcomingDate]);
 
   const disputeMutation = useMutation({
     mutationFn: () => api.post('/api/disputes', {
@@ -95,17 +116,113 @@ const Dashboard = () => {
     const upcoming = data.filter((s: any) => s.status !== 'CANCELLED' && s.status !== 'AWAITING_PAYMENT' && isFuture(new Date(s.datetime)));
     const past = data.filter((s: any) => s.status === 'COMPLETED' || isPast(new Date(s.datetime)));
 
+    const completedPast = data.filter((s: any) => s.status === 'COMPLETED');
+    const totalHoursLearned = completedPast.reduce((sum: number, s: any) => sum + s.durationMin, 0) / 60;
+    const thisMonth = new Date().getMonth();
+    const sessionsThisMonth = completedPast.filter((s: any) => new Date(s.datetime).getMonth() === thisMonth).length;
+    
+    const subjectsCount: Record<string, number> = {};
+    completedPast.forEach((s: any) => {
+      s.tutor?.tutorProfile?.subjects?.forEach((sub: string) => {
+        subjectsCount[sub] = (subjectsCount[sub] || 0) + 1;
+      });
+    });
+    const favoriteSubject = Object.entries(subjectsCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+
+    const uniqueTutors = Array.from(new Map(
+      past.filter((s:any) => s.tutorId).map((s: any) => [s.tutorId, { ...s.tutor, id: s.tutorId }])
+    ).values()) as any[];
+
+    const now = new Date();
+    const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const nearestUpcoming = upcoming
+      .filter((s: any) => s.status === 'CONFIRMED' && new Date(s.datetime) > now && new Date(s.datetime) < next24h)
+      .sort((a: any, b: any) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())[0];
+
+    // Set nearest upcoming date once for the countdown hook
+    if (nearestUpcoming && nearestUpcomingDate?.getTime() !== new Date(nearestUpcoming.datetime).getTime()) {
+      setNearestUpcomingDate(new Date(nearestUpcoming.datetime));
+    } else if (!nearestUpcoming && nearestUpcomingDate) {
+      setNearestUpcomingDate(null);
+    }
+
     return (
       <div className="container mx-auto max-w-5xl py-12 px-6">
+        {nearestUpcoming && (
+          <div className="mb-8 bg-orange-50 border-2 border-orange-200 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 className="text-orange-800 font-black text-xl flex items-center gap-2">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
+                </span>
+                Session starting soon!
+              </h3>
+              <p className="text-orange-700 font-medium mt-1">Your session with {nearestUpcoming.tutor.email.split('@')[0]} starts in <span className="font-black">{timeLeft}</span></p>
+            </div>
+            <Button size="lg" className="rounded-xl font-black px-8 bg-orange-500 hover:bg-orange-600 text-white" onClick={() => router.push(`/session/${nearestUpcoming.id}/room`)}>
+              Join Room Now
+            </Button>
+          </div>
+        )}
+
         <header className="mb-12">
           <h1 className="text-4xl font-black tracking-tight">Student Dashboard</h1>
           <p className="text-muted-foreground mt-2">Manage your learning journey and upcoming sessions.</p>
         </header>
+
+        {/* Stats Widget */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <Card className="border-none shadow-[0_20px_50px_rgb(0,0,0,0.04)] rounded-[2rem] p-6 bg-card flex items-center gap-4">
+            <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary text-2xl font-black">⏱️</div>
+            <div>
+              <div className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Total Hours</div>
+              <div className="text-3xl font-black mt-1">{totalHoursLearned.toFixed(1)}</div>
+            </div>
+          </Card>
+          <Card className="border-none shadow-[0_20px_50px_rgb(0,0,0,0.04)] rounded-[2rem] p-6 bg-card flex items-center gap-4">
+            <div className="w-14 h-14 bg-green-500/10 rounded-2xl flex items-center justify-center text-green-600 text-2xl font-black">📚</div>
+            <div>
+              <div className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Favorite Subject</div>
+              <div className="text-3xl font-black mt-1">{favoriteSubject}</div>
+            </div>
+          </Card>
+          <Card className="border-none shadow-[0_20px_50px_rgb(0,0,0,0.04)] rounded-[2rem] p-6 bg-card flex items-center gap-4">
+            <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-600 text-2xl font-black">🎯</div>
+            <div>
+              <div className="text-sm font-bold text-muted-foreground uppercase tracking-wider">This Month</div>
+              <div className="text-3xl font-black mt-1">{sessionsThisMonth} <span className="text-sm text-muted-foreground">sessions</span></div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Quick Re-Book */}
+        {uniqueTutors.length > 0 && (
+          <div className="mb-12">
+            <h2 className="text-xl font-black mb-6">Your Tutors</h2>
+            <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
+              {uniqueTutors.map((t) => (
+                <Card key={t.id} className="min-w-[250px] snap-start border-none shadow-[0_10px_30px_rgb(0,0,0,0.03)] rounded-3xl p-5 flex flex-col items-center text-center bg-card">
+                  <Avatar className="h-16 w-16 mb-4">
+                    <AvatarImage src={t.avatarUrl} />
+                    <AvatarFallback className="bg-primary/5 text-primary text-xl font-bold">{t.email[0].toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <h3 className="font-bold text-lg mb-1">{t.email.split('@')[0]}</h3>
+                  <p className="text-xs text-muted-foreground font-medium mb-5">{t.tutorProfile?.subjects?.[0] || 'Tutor'}</p>
+                  <Button variant="outline" className="w-full rounded-xl font-bold border-primary/20 text-primary hover:bg-primary/5" onClick={() => router.push(`/tutors/${t.user?.id || t.id}`)}>
+                    Book Again
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
         
         <Tabs defaultValue="upcoming" className="space-y-8">
           <TabsList className="bg-muted/50 p-1 rounded-xl">
             <TabsTrigger value="upcoming" className="rounded-lg px-6 font-bold">Upcoming</TabsTrigger>
             <TabsTrigger value="past" className="rounded-lg px-6 font-bold">History</TabsTrigger>
+            <TabsTrigger value="resources" className="rounded-lg px-6 font-bold">Resources & Notes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="upcoming" className="grid gap-6">
@@ -207,6 +324,39 @@ const Dashboard = () => {
                       Open Dispute
                     </Button>
                   </CardFooter>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="resources" className="grid gap-6">
+            {completedPast.length === 0 ? (
+              <Card className="border-dashed border-2 bg-transparent shadow-none"><CardContent className="py-16 text-center text-muted-foreground">No completed sessions to show resources for.</CardContent></Card>
+            ) : (
+              completedPast.map((session: any) => (
+                <Card key={session.id} className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
+                  <CardHeader className="p-6 bg-muted/20 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setExpandedSessionId(expandedSessionId === session.id ? null : session.id)}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={session.tutor.avatarUrl} />
+                          <AvatarFallback>{session.tutor.email[0].toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <CardTitle className="text-base font-bold">{session.tutor.email.split('@')[0]} - {format(new Date(session.datetime), 'PP')}</CardTitle>
+                          <CardDescription>Session Resources & Chat Logs</CardDescription>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="sm" className="rounded-xl">
+                        {expandedSessionId === session.id ? 'Collapse' : 'View'}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  {expandedSessionId === session.id && (
+                    <CardContent className="p-6">
+                      <SessionResources sessionId={session.id} />
+                    </CardContent>
+                  )}
                 </Card>
               ))
             )}
@@ -504,4 +654,46 @@ const Dashboard = () => {
 
   return <div>Role not recognized</div>;
 };
+
+const SessionResources = ({ sessionId }: { sessionId: string }) => {
+  const { data: resources } = useQuery({
+    queryKey: ['resources', sessionId],
+    queryFn: async () => (await api.get(`/api/sessions/${sessionId}/resources`)).data.resources
+  });
+  const { data: messages } = useQuery({
+    queryKey: ['messages', sessionId],
+    queryFn: async () => (await api.get(`/api/sessions/${sessionId}/messages`)).data.messages
+  });
+
+  return (
+    <div className="mt-4 border-t pt-4 space-y-6">
+      <div>
+        <h4 className="font-bold text-sm mb-3">Session Resources</h4>
+        {resources?.length === 0 ? <p className="text-xs text-muted-foreground">No resources uploaded.</p> : (
+          <div className="flex gap-3 flex-wrap">
+            {resources?.map((r: any) => (
+              <a key={r.id} href={r.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-2 rounded-xl text-sm font-bold hover:bg-primary/20">
+                📄 {r.title}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+      <div>
+        <h4 className="font-bold text-sm mb-3">Chat Logs</h4>
+        {messages?.length === 0 ? <p className="text-xs text-muted-foreground">No chat logs.</p> : (
+          <div className="space-y-3 max-h-[300px] overflow-y-auto bg-muted/20 p-4 rounded-2xl">
+            {messages?.map((m: any) => (
+              <div key={m.id} className="text-sm">
+                <span className="font-bold">{m.sender?.email?.split('@')[0]}: </span>
+                <span className="text-muted-foreground">{m.content}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export default Dashboard;

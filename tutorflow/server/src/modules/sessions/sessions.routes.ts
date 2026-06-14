@@ -562,3 +562,82 @@ sessionsRouter.post('/:id/room', requireAuth, async (req: Request, res: Response
     next(error);
   }
 });
+
+sessionsRouter.get('/:id/resources', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const userId = (req.user as any).id;
+
+    const session = await prisma.session.findUnique({
+      where: { id },
+      include: { resources: { orderBy: { createdAt: 'desc' } } }
+    });
+
+    if (!session || (session.studentId !== userId && session.tutorId !== userId)) {
+      res.status(403).json({ error: 'Not authorized' });
+      return;
+    }
+
+    res.json({ resources: session.resources });
+  } catch (error) {
+    next(error);
+  }
+});
+
+sessionsRouter.post('/:id/resources', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const userId = (req.user as any).id;
+    const { title, url, type } = req.body;
+
+    const session = await prisma.session.findUnique({
+      where: { id }
+    });
+
+    if (!session || (session.studentId !== userId && session.tutorId !== userId)) {
+      res.status(403).json({ error: 'Not authorized' });
+      return;
+    }
+
+    const resource = await prisma.resource.create({
+      data: {
+        sessionId: id,
+        title,
+        url,
+        type: type || 'link'
+      }
+    });
+
+    res.json({ resource });
+  } catch (error) {
+    next(error);
+  }
+});
+
+sessionsRouter.get('/:id/messages', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const userId = (req.user as any).id;
+
+    const session = await prisma.session.findUnique({
+      where: { id }
+    });
+
+    if (!session || (session.studentId !== userId && session.tutorId !== userId)) {
+      res.status(403).json({ error: 'Not authorized' });
+      return;
+    }
+
+    const messages = await prisma.message.findMany({
+      where: { sessionId: id },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        sender: { select: { id: true, email: true, avatarUrl: true } }
+      }
+    });
+
+    res.json({ messages });
+  } catch (error) {
+    next(error);
+  }
+});
