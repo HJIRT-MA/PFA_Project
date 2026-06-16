@@ -42,3 +42,41 @@ usersRouter.patch('/me/notification-preferences', async (req: Request, res: Resp
     next(error);
   }
 });
+
+usersRouter.get('/me/favorites', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const studentId = (req.user as any).id;
+
+    const favorites = await prisma.favoriteTutor.findMany({
+      where: { studentId },
+      include: {
+        tutor: {
+          include: {
+            user: { select: { email: true, avatarUrl: true } }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const mappedTutors = favorites.map(f => {
+      const t = f.tutor;
+      return {
+        id: t.userId,
+        name: t.user.email.split('@')[0],
+        avatarUrl: t.user.avatarUrl,
+        subjects: t.subjects,
+        hourlyRate: t.hourlyRate,
+        averageRating: t.averageRating,
+        reviewCount: t.reviewCount,
+        availableSlotsCount: 15,
+        availability: t.availability,
+        isOnline: t.isOnline
+      };
+    });
+
+    res.json({ favorites: mappedTutors });
+  } catch (error) {
+    next(error);
+  }
+});

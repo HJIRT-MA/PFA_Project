@@ -16,6 +16,7 @@ import { adminRouter } from './modules/admin/admin.routes';
 import { notificationsRouter } from './modules/notifications/notifications.routes';
 import { usersRouter } from './modules/users/users.routes';
 import { disputesRouter } from './modules/disputes/disputes.routes';
+import { aiRouter } from './modules/ai/ai.routes';
 import passport from 'passport';
 import { createServer } from 'http';
 import { setupSocketIO } from './socket';
@@ -41,6 +42,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/disputes', disputesRouter);
+app.use('/api/ai', aiRouter);
 
 // Routes
 app.get('/', (req: Request, res: Response) => {

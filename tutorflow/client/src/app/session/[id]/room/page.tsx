@@ -15,7 +15,7 @@ const VideoRoom = () => {
   const [token, setToken] = useState<string | null>(null);
   const [roomUrl, setRoomUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
-  const [timeLeft, setTimeLeft] = useState<number | null>(null); // in seconds
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
   
   const callFrameRef = useRef<HTMLDivElement>(null);
   const dailyRef = useRef<DailyCall | null>(null);
@@ -28,6 +28,7 @@ const VideoRoom = () => {
     }
   });
 
+  // 1. Timer Logic
   useEffect(() => {
     if (!session) return;
     
@@ -37,7 +38,7 @@ const VideoRoom = () => {
       const diffSecs = differenceInSeconds(start, now);
       
       if (diffSecs > 30 * 60) {
-        setTimeLeft(diffSecs - 30 * 60); // Time until room opens (30 mins before)
+        setTimeLeft(diffSecs - 30 * 60);
       } else {
         setTimeLeft(0);
       }
@@ -47,6 +48,10 @@ const VideoRoom = () => {
     const interval = setInterval(checkTime, 1000);
     return () => clearInterval(interval);
   }, [session]);
+
+  const handleLeave = useCallback(() => {
+    router.push(`/dashboard`);
+  }, [router]);
 
   const joinSession = async () => {
     try {
@@ -58,13 +63,19 @@ const VideoRoom = () => {
     }
   };
 
-  const handleLeave = useCallback(() => {
-    router.push(`/dashboard`);
-    // Optional: navigate to /review/:sessionId if student
-  }, [router]);
-
+  // 2. Daily.co Initialization Logic (Only ONE useEffect for this)
   useEffect(() => {
     if (!roomUrl || !callFrameRef.current) return;
+    
+    // Do not initialize Daily SDK if it's a mock room
+    if (roomUrl.includes('mock.daily.co')) return;
+
+    // --- FIX: Clean up any dangling global instances from React Strict Mode / Fast Refresh ---
+    const existingInstance = DailyIframe.getCallInstance();
+    if (existingInstance) {
+      existingInstance.destroy();
+    }
+    // -----------------------------------------------------------------------------------------
 
     if (!dailyRef.current) {
       dailyRef.current = DailyIframe.createFrame(callFrameRef.current, {
@@ -80,23 +91,42 @@ const VideoRoom = () => {
       dailyRef.current.on('left-meeting', handleLeave);
     }
 
+    let isMounted = true;
+
     const joinOptions: any = { url: roomUrl };
     if (token) joinOptions.token = token;
 
     dailyRef.current.join(joinOptions).catch(err => {
-      console.error(err);
-      setErrorMsg('Failed to join room');
+      // 1. If component unmounted, exit silently
+      if (!isMounted) return;
+
+      // 2. THE NUCLEAR FIX: 
+      // A real Daily error ALWAYS has an 'errorMsg', 'message', or is a string.
+      // If none of these exist (like the weird {} abort object), kill the process and do not crash the UI.
+      const hasRealErrorData = err && (err.errorMsg || err.message || typeof err === 'string');
+      
+      if (!hasRealErrorData) {
+        console.log('Daily.co silent abort caught and ignored.');
+        return; 
+      }
+
+      // 3. Only show the red error screen if we have actual readable error data
+      console.error('Daily.co actual join error:', err);
+      setErrorMsg('Failed to join room: ' + (err.errorMsg || err.message || 'Unknown error'));
     });
 
     return () => {
+      isMounted = false;
       if (dailyRef.current) {
-        dailyRef.current.leave();
+        // Safe leave and destroy
+        dailyRef.current.leave().catch(() => {}); 
         dailyRef.current.destroy();
         dailyRef.current = null;
       }
     };
   }, [roomUrl, token, handleLeave]);
 
+  // 3. Render logic
   if (isLoading) return <div className="p-8 text-center">Loading session...</div>;
   if (errorMsg) return <div className="p-8 text-center text-destructive">{errorMsg}</div>;
 
@@ -127,9 +157,24 @@ const VideoRoom = () => {
     );
   }
 
+  if (roomUrl.includes('mock.daily.co')) {
+    return (
+      <div className="h-[calc(100vh-4rem)] w-full p-8 bg-zinc-950 flex flex-col items-center justify-center space-y-6 text-center">
+        <div className="w-24 h-24 bg-primary/20 text-primary rounded-3xl flex items-center justify-center text-4xl mb-4">🎥</div>
+        <h2 className="text-3xl font-bold text-white">Simulated Mock Session Room</h2>
+        <p className="text-zinc-400 max-w-lg mb-8">
+          You are seeing this mock room because there is no valid <strong>Daily.co API Key</strong> configured in your server's <code>.env</code> file. To use real video sessions, please add your Daily API key.
+        </p>
+        <Button size="lg" variant="destructive" onClick={handleLeave} className="rounded-xl px-8 font-bold h-12">
+          End Mock Session
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="h-[calc(100vh-4rem)] w-full p-4 bg-black flex flex-col">
-      <div className="flex-1 w-full relative rounded-xl overflow-hidden shadow-2xl" ref={callFrameRef}>
+      <div className="flex-1 w-full relative rounded-xl overflow-hidden shadow-2xl bg-zinc-900" ref={callFrameRef}>
         {/* Daily Iframe injected here */}
       </div>
     </div>

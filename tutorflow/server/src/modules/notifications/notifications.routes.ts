@@ -9,24 +9,31 @@ notificationsRouter.use(requireAuth);
 notificationsRouter.get('/me', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = (req.user as any).id;
-    const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = 20;
 
     const notifications = await prisma.notification.findMany({
       where: { userId },
       orderBy: [
-        { readAt: 'asc' }, // nulls (unread) first usually requires special query, but in Prisma we can sort by createdAt for now
         { createdAt: 'desc' }
       ],
-      skip: (page - 1) * limit,
       take: limit
     });
+
+    if (notifications.length === limit) {
+      const oldestKeptDate = notifications[limit - 1].createdAt;
+      await prisma.notification.deleteMany({
+        where: {
+          userId,
+          createdAt: { lt: oldestKeptDate }
+        }
+      });
+    }
 
     const unreadCount = await prisma.notification.count({
       where: { userId, readAt: null }
     });
 
-    res.json({ notifications, unreadCount, page });
+    res.json({ notifications, unreadCount, page: 1 });
   } catch (error) {
     next(error);
   }

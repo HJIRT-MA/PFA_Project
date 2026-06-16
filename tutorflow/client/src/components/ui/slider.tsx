@@ -26,7 +26,7 @@ const Slider = React.forwardRef<HTMLDivElement, SliderPrimitive.Root.Props>(
         <SliderPrimitive.Control className="relative flex w-full grow items-center data-vertical:h-full data-vertical:flex-col">
           <SliderPrimitive.Track
             data-slot="slider-track"
-            className="relative grow overflow-hidden rounded-full bg-muted data-horizontal:h-1.5 data-horizontal:w-full data-vertical:h-full data-vertical:w-1.5"
+            className="relative grow overflow-hidden rounded-full border border-border bg-muted data-horizontal:h-1.5 data-horizontal:w-full data-vertical:h-full data-vertical:w-1.5"
           >
             <SliderPrimitive.Indicator
               data-slot="slider-range"

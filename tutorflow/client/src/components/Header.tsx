@@ -4,15 +4,16 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { api } from '@/lib/api';
 import { NotificationBell } from './NotificationBell';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { LogOut, LayoutDashboard, Settings, MessageCircle, Moon, Sun } from 'lucide-react';
+import { LogOut, LayoutDashboard, Settings, MessageCircle, Moon, Sun, Heart } from 'lucide-react';
 import { ChatDrawer } from './ChatDrawer';
 
 export function Header() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, setFavoritedTutorIds } = useAuthStore();
   const router = useRouter();
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
@@ -28,7 +29,14 @@ export function Header() {
         document.documentElement.classList.remove('dark');
       }
     }
-  }, []);
+
+    if (user && user.role === 'STUDENT') {
+      api.get('/api/users/me/favorites').then(res => {
+        const ids = res.data.favorites.map((t: any) => t.id);
+        setFavoritedTutorIds(ids);
+      }).catch(err => console.error('Failed to fetch favorites', err));
+    }
+  }, [user, setFavoritedTutorIds]);
 
   const toggleDarkMode = () => {
     const newMode = !isDark;
@@ -52,15 +60,33 @@ export function Header() {
           TutorFlow
         </h1>
         <nav className="hidden md:flex items-center gap-8">
-          <Link href="/" className="relative text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors duration-200 group flex items-center gap-2">
+           {user && (
+            <Link href="/welcome" className="relative text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors duration-200 group flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 group-hover:animate-pulse-soft transition-all" />
+              Home
+              <span className="absolute -bottom-1.5 left-0 w-0 h-0.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-300 group-hover:w-full" />
+            </Link>
+          )}
+          {user && (
+             <Link href="/" className="relative text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors duration-200 group flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-secondary group-hover:animate-pulse-soft transition-all" />
             Find Tutors
             <span className="absolute -bottom-1.5 left-0 w-0 h-0.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-300 group-hover:w-full" />
           </Link>
+          )}
+        
+       
           {user && (
             <Link href="/dashboard" className="relative text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors duration-200 group flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-primary group-hover:animate-pulse-soft transition-all" />
               Dashboard
+              <span className="absolute -bottom-1.5 left-0 w-0 h-0.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-300 group-hover:w-full" />
+            </Link>
+          )}
+          {user && user.role === 'STUDENT' && (
+            <Link href="/dashboard/favorites" className="relative text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors duration-200 group flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 group-hover:animate-pulse-soft transition-all" />
+              Favorites
               <span className="absolute -bottom-1.5 left-0 w-0 h-0.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-300 group-hover:w-full" />
             </Link>
           )}
@@ -102,6 +128,16 @@ export function Header() {
                     <LayoutDashboard className="w-4 h-4" />
                     Dashboard
                   </Button>
+                  {user.role === 'STUDENT' && (
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start rounded-xl font-semibold h-11 gap-3 hover:bg-primary/5 hover:text-primary transition-all duration-200" 
+                      onClick={() => router.push('/dashboard/favorites')}
+                    >
+                      <Heart className="w-4 h-4" />
+                      Favorites
+                    </Button>
+                  )}
                   <Button 
                     variant="ghost" 
                     className="w-full justify-start rounded-xl font-semibold h-11 gap-3 hover:bg-primary/5 hover:text-primary transition-all duration-200" 

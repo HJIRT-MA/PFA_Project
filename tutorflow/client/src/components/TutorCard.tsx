@@ -1,6 +1,9 @@
 "use client";
 
-import { Star } from 'lucide-react';
+import { Star, Heart } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardFooter } from '@/components/ui/card';
@@ -16,6 +19,8 @@ export interface TutorCardProps {
     averageRating: number;
     reviewCount: number;
   };
+  isFavorited?: boolean;
+  onFavoriteToggle?: (id: string, isFavorited: boolean) => void;
 }
 
 import { useRouter } from 'next/navigation';
@@ -40,9 +45,50 @@ function getTutorColor(name: string) {
   return TUTOR_COLORS[Math.abs(hash) % TUTOR_COLORS.length];
 }
 
-export const TutorCard = ({ tutor }: TutorCardProps) => {
+export const TutorCard = ({ tutor, isFavorited: initialIsFavorited = false, onFavoriteToggle }: TutorCardProps) => {
   const router = useRouter();
+  const { user, favoritedTutorIds, setFavoritedTutorIds } = useAuthStore();
   const color = getTutorColor(tutor.name);
+  const [isFavorited, setIsFavorited] = useState(initialIsFavorited || favoritedTutorIds?.includes(tutor.id) || false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (initialIsFavorited === false && favoritedTutorIds) {
+      setIsFavorited(favoritedTutorIds.includes(tutor.id));
+    }
+  }, [favoritedTutorIds, tutor.id, initialIsFavorited]);
+
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const newState = !isFavorited;
+      if (newState) {
+        await api.post(`/api/tutors/${tutor.id}/favorite`).catch((e: any) => {
+          if (e.response?.status !== 400) throw e;
+        });
+        if (favoritedTutorIds) setFavoritedTutorIds([...favoritedTutorIds, tutor.id]);
+      } else {
+        await api.delete(`/api/tutors/${tutor.id}/favorite`).catch((e: any) => {
+          if (e.response?.status !== 404) throw e;
+        });
+        if (favoritedTutorIds) setFavoritedTutorIds(favoritedTutorIds.filter(id => id !== tutor.id));
+      }
+      setIsFavorited(newState);
+      if (onFavoriteToggle) {
+        onFavoriteToggle(tutor.id, newState);
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Card className="group h-full flex flex-col border border-border/30 shadow-card hover:shadow-elevated transition-all duration-500 rounded-2xl overflow-hidden bg-card hover:-translate-y-1.5">
@@ -58,6 +104,26 @@ export const TutorCard = ({ tutor }: TutorCardProps) => {
           backgroundImage: `radial-gradient(circle at 20% 50%, rgba(255,255,255,0.3) 0%, transparent 50%), 
                             radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 0%, transparent 40%)`,
         }} />
+        
+        {/* Favorite Button */}
+        {user?.role !== 'TUTOR' && (
+          <button 
+            onClick={handleFavoriteClick}
+            disabled={isLoading}
+          className={`absolute top-4 right-4 z-20 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 ${
+            isFavorited 
+              ? 'bg-white shadow-lg scale-105' 
+              : 'bg-white/20 hover:bg-white/40 border border-white/30'
+          }`}
+          aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+        >
+          <Heart 
+            className={`w-5 h-5 transition-all duration-300 ${
+              isFavorited ? 'fill-rose-500 text-rose-500' : 'text-white'
+            }`} 
+          />
+        </button>
+        )}
       </div>
       
       <div className="px-6 -mt-12 flex-1 flex flex-col relative z-10">

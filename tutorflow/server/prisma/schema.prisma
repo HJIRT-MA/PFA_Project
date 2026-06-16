@@ -25,6 +25,7 @@ model User {
   sessionsAsStudent Session[]                @relation("StudentSessions")
   sessionsAsTutor   Session[]                @relation("TutorSessions")
   tutorProfile      TutorProfile?
+  favoriteTutors    FavoriteTutor[]
 }
 
 model TutorProfile {
@@ -38,7 +39,9 @@ model TutorProfile {
   averageRating Float    @default(0)
   reviewCount   Int      @default(0)
   profileViews  Int      @default(0)
+  isOnline      Boolean  @default(true)
   user          User     @relation(fields: [userId], references: [id])
+  favoritedBy   FavoriteTutor[]
 }
 
 model Session {
@@ -130,6 +133,18 @@ model Resource {
   type        String    @default("link")
   createdAt   DateTime  @default(now())
   session     Session   @relation(fields: [sessionId], references: [id])
+}
+
+model FavoriteTutor {
+  id        String   @id @default(uuid())
+  studentId String
+  tutorId   String
+  createdAt DateTime @default(now())
+
+  student   User         @relation(fields: [studentId], references: [id])
+  tutor     TutorProfile @relation(fields: [tutorId], references: [id])
+
+  @@unique([studentId, tutorId])
 }
 
 enum Role {

@@ -76,7 +76,7 @@ export const NotificationBell = () => {
           {notifications.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">No notifications yet</div>
           ) : (
-            notifications.slice(0, 10).map((n: any) => (
+            notifications.slice(0, 20).map((n: any) => (
               <div 
                 key={n.id} 
                 className={`p-4 border-b border-border/30 cursor-pointer hover:bg-muted/40 transition-colors duration-200 ${!n.readAt ? 'bg-primary/5' : ''}`}

@@ -101,15 +101,23 @@ const TutorProfile = () => {
                   {tutor.name.substring(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute bottom-2 right-2 h-6 w-6 rounded-full bg-green-500 border-4 border-background" />
+              {tutor.isOnline && (
+                <div className="absolute bottom-2 right-2 h-6 w-6 rounded-full bg-green-500 border-4 border-background" />
+              )}
             </div>
             
             <div className="flex-1 text-center md:text-left pt-4">
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-4">
                 <h1 className="text-4xl md:text-5xl font-black tracking-tight text-foreground">{tutor.name}</h1>
-                <Badge className="bg-green-500/10 text-green-700 hover:bg-green-500/20 border-none px-4 py-1 rounded-full font-bold">
-                  Online now
-                </Badge>
+                {tutor.isOnline ? (
+                  <Badge className="bg-green-500/10 text-green-700 hover:bg-green-500/20 border-none px-4 py-1 rounded-full font-bold">
+                    Online now
+                  </Badge>
+                ) : (
+                  <Badge className="bg-muted/50 text-muted-foreground hover:bg-muted border-none px-4 py-1 rounded-full font-bold">
+                    Offline
+                  </Badge>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-muted-foreground">

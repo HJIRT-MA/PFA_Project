@@ -31,7 +31,7 @@ const Login = () => {
     mutationFn: (data: LoginForm) => api.post('/api/auth/login', data),
     onSuccess: (response) => {
       setUser(response.data.user, response.data.token);
-      router.push('/dashboard');
+      router.push('/welcome');
     },
     onError: (error: any) => {
       // Show error handling here (e.g. toast)

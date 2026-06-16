@@ -49,7 +49,8 @@ tutorsRouter.get('/', async (req: Request, res: Response, next: NextFunction): P
       averageRating: t.averageRating,
       reviewCount: t.reviewCount,
       availableSlotsCount: 15, // Mock for now
-      availability: t.availability
+      availability: t.availability,
+      isOnline: t.isOnline
     }));
 
     const totalPages = Math.ceil(total / limit);
@@ -138,7 +139,8 @@ tutorsRouter.get('/me/stats', requireAuth, requireRole('TUTOR'), async (req: Req
         currentMonth: currentMonthEarnings,
         allTime: allTimeEarnings
       },
-      sessionsPerWeek
+      sessionsPerWeek,
+      isOnline: profile.isOnline
     });
   } catch (error) {
     next(error);
@@ -197,7 +199,8 @@ tutorsRouter.get('/:id', async (req: Request, res: Response, next: NextFunction)
       availability: tutorProfile.availability || {},
       reviews: formattedReviews,
       reviewsPage: page,
-      reviewsTotalPages: Math.ceil(totalReviews / limit)
+      reviewsTotalPages: Math.ceil(totalReviews / limit),
+      isOnline: tutorProfile.isOnline
     });
   } catch (error) {
     next(error);
@@ -237,6 +240,7 @@ const updateProfileSchema = z.object({
   hourlyRate: z.number().min(0).optional(),
   isVerified: z.boolean().optional(),
   availability: z.record(z.any()).optional(),
+  isOnline: z.boolean().optional(),
 });
 
 tutorsRouter.patch(
@@ -257,6 +261,7 @@ tutorsRouter.patch(
           subjects: parsedData.subjects || [],
           hourlyRate: parsedData.hourlyRate || 0,
           availability: parsedData.availability || {},
+          isOnline: parsedData.isOnline ?? true,
         },
       });
 
@@ -266,3 +271,69 @@ tutorsRouter.patch(
     }
   }
 );
+
+// POST /api/tutors/:id/favorite
+tutorsRouter.post('/:id/favorite', requireAuth, requireRole('STUDENT'), async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const studentId = (req.user as any).id;
+    const tutorUserId = req.params.id;
+
+    const tutorProfile = await prisma.tutorProfile.findUnique({
+      where: { userId: tutorUserId }
+    });
+
+    if (!tutorProfile) {
+      res.status(404).json({ error: 'Tutor not found' });
+      return;
+    }
+
+    await prisma.favoriteTutor.create({
+      data: {
+        studentId,
+        tutorId: tutorProfile.id
+      }
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      res.status(400).json({ error: 'Already favorited' });
+      return;
+    }
+    next(error);
+  }
+});
+
+// DELETE /api/tutors/:id/favorite
+tutorsRouter.delete('/:id/favorite', requireAuth, requireRole('STUDENT'), async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const studentId = (req.user as any).id;
+    const tutorUserId = req.params.id;
+
+    const tutorProfile = await prisma.tutorProfile.findUnique({
+      where: { userId: tutorUserId }
+    });
+
+    if (!tutorProfile) {
+      res.status(404).json({ error: 'Tutor not found' });
+      return;
+    }
+
+    await prisma.favoriteTutor.delete({
+      where: {
+        studentId_tutorId: {
+          studentId,
+          tutorId: tutorProfile.id
+        }
+      }
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      res.status(404).json({ error: 'Favorite not found' });
+      return;
+    }
+    next(error);
+  }
+});

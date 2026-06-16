@@ -24,7 +24,20 @@ const Dashboard = () => {
   const [disputeSessionId, setDisputeSessionId] = useState<string | null>(null);
   const [disputeReason, setDisputeReason] = useState<string>('');
   const [disputeDescription, setDisputeDescription] = useState<string>('');
+  const [declineSessionId, setDeclineSessionId] = useState<string | null>(null);
+  const [declineReasonText, setDeclineReasonText] = useState<string>('');
   const [isOnline, setIsOnline] = useState(true);
+
+  const statusMutation = useMutation({
+    mutationFn: (newStatus: boolean) => api.patch('/api/tutors/me/profile', { isOnline: newStatus }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tutorStats'] })
+  });
+
+  const handleToggleOnline = () => {
+    const newStatus = !isOnline;
+    setIsOnline(newStatus);
+    statusMutation.mutate(newStatus);
+  };
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
   const [nearestUpcomingDate, setNearestUpcomingDate] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState<string>('');
@@ -78,6 +91,12 @@ const Dashboard = () => {
     enabled: user?.role === 'TUTOR'
   });
 
+  useEffect(() => {
+    if (tutorStats?.isOnline !== undefined) {
+      setIsOnline(tutorStats.isOnline);
+    }
+  }, [tutorStats?.isOnline]);
+
   const cancelMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/api/sessions/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessions'] })
@@ -90,7 +109,14 @@ const Dashboard = () => {
 
   const declineMutation = useMutation({
     mutationFn: ({ id, reason }: { id: string, reason: string }) => api.patch(`/api/sessions/${id}/decline`, { reason }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessions'] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      setDeclineSessionId(null);
+      setDeclineReasonText('');
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.error || 'Failed to decline session.');
+    }
   });
 
   useEffect(() => {
@@ -113,8 +139,8 @@ const Dashboard = () => {
   if (isLoading || !data) return <div className="p-8 text-center">Loading dashboard...</div>;
 
   if (user?.role === 'STUDENT') {
-    const upcoming = data.filter((s: any) => s.status !== 'CANCELLED' && s.status !== 'AWAITING_PAYMENT' && isFuture(new Date(s.datetime)));
-    const past = data.filter((s: any) => s.status === 'COMPLETED' || isPast(new Date(s.datetime)));
+    const upcoming = data.filter((s: any) => s.status !== 'CANCELLED' && s.status !== 'AWAITING_PAYMENT' && new Date(s.datetime).getTime() + s.durationMin * 60000 > new Date().getTime());
+    const past = data.filter((s: any) => s.status === 'COMPLETED' || (s.status !== 'CANCELLED' && new Date(s.datetime).getTime() + s.durationMin * 60000 <= new Date().getTime())).reverse().slice(0, 20);
 
     const completedPast = data.filter((s: any) => s.status === 'COMPLETED');
     const totalHoursLearned = completedPast.reduce((sum: number, s: any) => sum + s.durationMin, 0) / 60;
@@ -136,7 +162,7 @@ const Dashboard = () => {
     const now = new Date();
     const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const nearestUpcoming = upcoming
-      .filter((s: any) => s.status === 'CONFIRMED' && new Date(s.datetime) > now && new Date(s.datetime) < next24h)
+      .filter((s: any) => s.status === 'CONFIRMED' && new Date(s.datetime).getTime() + s.durationMin * 60000 > now.getTime() && new Date(s.datetime).getTime() < next24h.getTime())
       .sort((a: any, b: any) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())[0];
 
     // Set nearest upcoming date once for the countdown hook
@@ -413,9 +439,9 @@ const Dashboard = () => {
   }
 
   if (user?.role === 'TUTOR') {
-    const upcoming = data.filter((s: any) => s.status === 'CONFIRMED' && isFuture(new Date(s.datetime)));
+    const upcoming = data.filter((s: any) => s.status === 'CONFIRMED' && new Date(s.datetime).getTime() + s.durationMin * 60000 > new Date().getTime());
     const pending = data.filter((s: any) => s.status === 'PENDING');
-    const past = data.filter((s: any) => s.status === 'COMPLETED' || (s.status === 'CONFIRMED' && isPast(new Date(s.datetime))));
+    const past = data.filter((s: any) => s.status === 'COMPLETED' || (s.status === 'CONFIRMED' && new Date(s.datetime).getTime() + s.durationMin * 60000 <= new Date().getTime())).reverse().slice(0, 20);
     
     const thisMonth = new Date().getMonth();
     const earnings = past.reduce((sum: number, s: any) => {
@@ -426,12 +452,45 @@ const Dashboard = () => {
     // Generate mock chart data based on real earnings average or just static mock if no data
     const monthlyAverage = (earnings / 100) || 450;
     const chartData = Array.from({ length: 6 }).map((_, i) => ({
-      name: format(subMonths(new Date(), 5 - i), 'MMM'),
-      revenue: Math.floor(monthlyAverage * (0.5 + Math.random() * 0.8)) + (i === 5 ? (earnings/100) : 0)
+      name: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'][i],
+      revenue: i === 5 ? earnings / 100 : Math.floor(monthlyAverage * (0.8 + Math.random() * 0.4)),
     }));
+
+    const now = new Date();
+    const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const nearestUpcoming = upcoming
+      .filter((s: any) => s.status === 'CONFIRMED' && new Date(s.datetime).getTime() + s.durationMin * 60000 > now.getTime() && new Date(s.datetime).getTime() < next24h.getTime())
+      .sort((a: any, b: any) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())[0];
+
+    // Set nearest upcoming date once for the countdown hook
+    if (nearestUpcoming && nearestUpcomingDate?.getTime() !== new Date(nearestUpcoming.datetime).getTime()) {
+      setNearestUpcomingDate(new Date(nearestUpcoming.datetime));
+    } else if (!nearestUpcoming && nearestUpcomingDate) {
+      setNearestUpcomingDate(null);
+    }
 
     return (
       <div className="container mx-auto max-w-5xl py-12 px-6">
+        {nearestUpcoming && (
+          <div className="mb-8 bg-orange-50 border-2 border-orange-200 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 className="text-orange-800 font-black text-xl flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-orange-500 animate-pulse" />
+                Session starting soon!
+              </h3>
+              <p className="text-orange-900 mt-1 font-medium">
+                Your session with {nearestUpcoming.student.email.split('@')[0]} starts in <span className="font-black">{timeLeft || '...'}</span>
+              </p>
+            </div>
+            <Button 
+              className="rounded-xl font-bold bg-orange-600 hover:bg-orange-700 px-8"
+              onClick={() => router.push(`/session/${nearestUpcoming.id}/room`)}
+            >
+              Join Room Now
+            </Button>
+          </div>
+        )}
+
         <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <div className="flex items-center gap-4">
@@ -439,7 +498,8 @@ const Dashboard = () => {
               <Button 
                 variant={isOnline ? "default" : "secondary"}
                 className={`rounded-full h-8 px-4 font-bold text-xs ${isOnline ? 'bg-green-500 hover:bg-green-600' : 'text-muted-foreground'}`}
-                onClick={() => setIsOnline(!isOnline)}
+                onClick={handleToggleOnline}
+                disabled={statusMutation.isPending}
               >
                 <span className={`w-2 h-2 rounded-full mr-2 ${isOnline ? 'bg-white' : 'bg-muted-foreground'}`} />
                 {isOnline ? 'Online Now' : 'Offline'}
@@ -465,7 +525,7 @@ const Dashboard = () => {
                 <CardTitle className="text-4xl font-black mt-1">€{(earnings / 100).toFixed(2)} <span className="text-sm font-bold text-muted-foreground">this month</span></CardTitle>
               </div>
             </div>
-            <div className="h-48 w-full mt-4">
+            <div className="h-96 w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} dy={10} />
@@ -607,10 +667,7 @@ const Dashboard = () => {
                     <Button 
                       variant="ghost" 
                       className="flex-1 rounded-xl font-bold h-11 text-muted-foreground hover:text-destructive hover:bg-destructive/5"
-                      onClick={() => {
-                        const reason = prompt('Reason for declining:');
-                        if (reason) declineMutation.mutate({ id: session.id, reason });
-                      }}
+                      onClick={() => setDeclineSessionId(session.id)}
                       disabled={declineMutation.isPending}
                     >
                       Decline
@@ -648,6 +705,39 @@ const Dashboard = () => {
             )}
           </TabsContent>
         </Tabs>
+
+        {declineSessionId && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl">
+              <CardHeader>
+                <CardTitle className="text-2xl font-black text-destructive">Decline Session</CardTitle>
+                <CardDescription>Please provide a reason for declining this request. The student will be notified and fully refunded.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="space-y-2">
+                  <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Reason</Label>
+                  <Textarea 
+                    placeholder="E.g., I have a scheduling conflict..." 
+                    className="rounded-2xl min-h-[120px]"
+                    value={declineReasonText}
+                    onChange={(e) => setDeclineReasonText(e.target.value)}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-end gap-3 pt-6 border-t p-6">
+                <Button variant="ghost" className="rounded-xl font-bold" onClick={() => { setDeclineSessionId(null); setDeclineReasonText(''); }}>Cancel</Button>
+                <Button 
+                  variant="destructive"
+                  className="rounded-xl font-bold px-8"
+                  onClick={() => declineMutation.mutate({ id: declineSessionId, reason: declineReasonText })} 
+                  disabled={!declineReasonText.trim() || declineMutation.isPending}
+                >
+                  Confirm Decline
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        )}
       </div>
     );
   }

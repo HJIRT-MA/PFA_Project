@@ -19,6 +19,8 @@ export const metadata = {
   description: 'Find the best tutors for your needs.',
 };
 
+import { AiChatbot } from '@/components/AiChatbot';
+
 export default function RootLayout({
   children,
 }: {
@@ -29,6 +31,7 @@ export default function RootLayout({
       <body suppressHydrationWarning className={inter.className}>
         <Providers>
           {children}
+          <AiChatbot />
         </Providers>
       </body>
     </html>
