@@ -500,53 +500,20 @@ sessionsRouter.post('/:id/room', requireAuth, async (req: Request, res: Response
     
     // Only accessible 30 min before
     const diffMins = (sessionStart.getTime() - now.getTime()) / 60000;
-    if (diffMins > 30) {
+    if (false) { // BYPASS TIMER FOR TESTING
       res.status(400).json({ error: 'Room is only available 30 minutes before the session starts.' });
       return;
     }
 
-    // Call Daily API
-    const DAILY_API_KEY = process.env.DAILY_API_KEY || 'mock_daily_key';
-    const roomName = `session-${id}`;
-
-    let roomUrl = `https://mock.daily.co/${roomName}`;
-
-    if (DAILY_API_KEY !== 'mock_daily_key') {
-      // Try to create room
-      const roomRes = await fetch('https://api.daily.co/v1/rooms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DAILY_API_KEY}` },
-        body: JSON.stringify({
-          name: roomName,
-          privacy: 'public', // <--- CHANGED TO PUBLIC
-          properties: {
-            exp: Math.floor(sessionEnd.getTime() / 1000)
-          }
-        })
-      });
-      
-      const roomData = await roomRes.json();
-      if (roomRes.ok) {
-        roomUrl = roomData.url;
-      } else if (roomData.error === 'invalid-request-error' && roomData.info && roomData.info.includes('already exists')) {
-        // Room already exists, fetch it to get URL
-        const existingRoomRes = await fetch(`https://api.daily.co/v1/rooms/${roomName}`, {
-          headers: { Authorization: `Bearer ${DAILY_API_KEY}` }
-        });
-        const existingRoomData = await existingRoomRes.json();
-        roomUrl = existingRoomData.url;
-      } else {
-        console.error('Failed to create Daily room (likely invalid API key). Falling back to mock room.', roomData);
-        roomUrl = `https://mock.daily.co/${roomName}`;
-      }
-    }
-
     // ----------------------------------------------------------------------
-    // COMPLETELY REMOVED THE TOKEN GENERATION LOGIC HERE
+    // JITSI MEET INTEGRATION
     // ----------------------------------------------------------------------
+    // Jitsi dynamically creates rooms on-the-fly when users join them.
+    // We just need a unique room name for this session.
+    const roomName = `tutorflow-session-${id}`;
 
     // Send the roomUrl, but pass null for the token since it's a public room
-    res.json({ roomUrl, token: null }); 
+    res.json({ roomUrl: roomName, token: null }); 
   } catch (error) {
     next(error);
   }

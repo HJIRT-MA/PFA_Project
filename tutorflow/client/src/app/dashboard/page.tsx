@@ -356,10 +356,10 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="resources" className="grid gap-6">
-            {completedPast.length === 0 ? (
-              <Card className="border-dashed border-2 bg-transparent shadow-none"><CardContent className="py-16 text-center text-muted-foreground">No completed sessions to show resources for.</CardContent></Card>
+            {past.length === 0 ? (
+              <Card className="border-dashed border-2 bg-transparent shadow-none"><CardContent className="py-16 text-center text-muted-foreground">No past sessions to show resources for.</CardContent></Card>
             ) : (
-              completedPast.map((session: any) => (
+              past.map((session: any) => (
                 <Card key={session.id} className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
                   <CardHeader className="p-6 bg-muted/20 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setExpandedSessionId(expandedSessionId === session.id ? null : session.id)}>
                     <div className="flex items-center justify-between">
@@ -683,23 +683,30 @@ const Dashboard = () => {
               <Card className="border-dashed border-2 bg-transparent shadow-none"><CardContent className="py-16 text-center text-muted-foreground">No session history yet</CardContent></Card>
             ) : (
               past.map((session: any) => (
-                <Card key={session.id} className="border-none shadow-sm rounded-2xl bg-card/50 grayscale hover:grayscale-0 transition-all opacity-80 hover:opacity-100 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={session.student.avatarUrl} />
-                        <AvatarFallback>{session.student.email[0].toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <CardTitle className="text-base font-bold">{session.student.email.split('@')[0]}</CardTitle>
-                        <CardDescription>{format(new Date(session.datetime), 'PPp')}</CardDescription>
+                <Card key={session.id} className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
+                  <CardHeader className="p-6 bg-muted/20 cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setExpandedSessionId(expandedSessionId === session.id ? null : session.id)}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={session.student.avatarUrl} />
+                          <AvatarFallback>{session.student.email[0].toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <CardTitle className="text-base font-bold">{session.student.email.split('@')[0]}</CardTitle>
+                          <CardDescription>{format(new Date(session.datetime), 'PPp')}</CardDescription>
+                        </div>
+                      </div>
+                      <div className="text-right flex flex-col items-end gap-1">
+                        <Badge variant="secondary" className="rounded-full px-3 text-[10px] font-bold">{session.status}</Badge>
+                        <span className="font-bold text-sm text-foreground">€{(session.amountCents / 100).toFixed(2)}</span>
                       </div>
                     </div>
-                    <div className="text-right flex flex-col items-end gap-1">
-                      <Badge variant="secondary" className="rounded-full px-3 text-[10px] font-bold">{session.status}</Badge>
-                      <span className="font-bold text-sm text-foreground">€{(session.amountCents / 100).toFixed(2)}</span>
-                    </div>
-                  </div>
+                  </CardHeader>
+                  {expandedSessionId === session.id && (
+                    <CardContent className="p-6">
+                      <SessionResources sessionId={session.id} isTutor={true} />
+                    </CardContent>
+                  )}
                 </Card>
               ))
             )}
@@ -745,7 +752,11 @@ const Dashboard = () => {
   return <div>Role not recognized</div>;
 };
 
-const SessionResources = ({ sessionId }: { sessionId: string }) => {
+const SessionResources = ({ sessionId, isTutor }: { sessionId: string; isTutor?: boolean }) => {
+  const queryClient = useQueryClient();
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
   const { data: resources } = useQuery({
     queryKey: ['resources', sessionId],
     queryFn: async () => (await api.get(`/api/sessions/${sessionId}/resources`)).data.resources
@@ -755,10 +766,48 @@ const SessionResources = ({ sessionId }: { sessionId: string }) => {
     queryFn: async () => (await api.get(`/api/sessions/${sessionId}/messages`)).data.messages
   });
 
+  const uploadMutation = useMutation({
+    mutationFn: async () => {
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const uploadRes = await api.post('/api/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      await api.post(`/api/sessions/${sessionId}/resources`, {
+        title: file.name,
+        url: uploadRes.data.url,
+        type: 'pdf'
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['resources', sessionId] });
+      setFile(null);
+    }
+  });
+
+  const handleUpload = async () => {
+    setUploading(true);
+    await uploadMutation.mutateAsync();
+    setUploading(false);
+  };
+
   return (
     <div className="mt-4 border-t pt-4 space-y-6">
       <div>
-        <h4 className="font-bold text-sm mb-3">Session Resources</h4>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="font-bold text-sm">Session Resources</h4>
+          {isTutor && (
+            <div className="flex items-center gap-2">
+              <input type="file" className="text-xs" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+              <Button size="sm" onClick={handleUpload} disabled={!file || uploading}>
+                {uploading ? 'Uploading...' : 'Upload PDF'}
+              </Button>
+            </div>
+          )}
+        </div>
         {resources?.length === 0 ? <p className="text-xs text-muted-foreground">No resources uploaded.</p> : (
           <div className="flex gap-3 flex-wrap">
             {resources?.map((r: any) => (
