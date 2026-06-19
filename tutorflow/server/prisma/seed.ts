@@ -4,8 +4,6 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Clear existing data
-  await prisma.dispute.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.notificationPreferences.deleteMany();
   await prisma.review.deleteMany();
@@ -16,14 +14,7 @@ async function main() {
 
   const passwordHash = await bcrypt.hash('password123', 10);
 
-  // Create Admin
-  const admin = await prisma.user.create({
-    data: {
-      email: 'admin@tutorflow.local',
-      passwordHash,
-      role: Role.ADMIN,
-    },
-  });
+
 
   // Create Students
   const student1 = await prisma.user.create({
@@ -82,7 +73,6 @@ async function main() {
 main()
   .catch((e) => {
     console.error(e);
-    process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();

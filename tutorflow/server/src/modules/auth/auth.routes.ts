@@ -13,6 +13,9 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   role: z.enum(['STUDENT', 'TUTOR']).transform(val => val as Role),
+  bio: z.string().optional(),
+  subjects: z.array(z.string()).optional(),
+  hourlyRate: z.number().optional(),
 });
 
 const loginSchema = z.object({
@@ -22,7 +25,7 @@ const loginSchema = z.object({
 
 authRouter.post('/register', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { email, password, role } = registerSchema.parse(req.body);
+    const { email, password, role, bio, subjects, hourlyRate } = registerSchema.parse(req.body);
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -40,9 +43,9 @@ authRouter.post('/register', async (req: Request, res: Response, next: NextFunct
         ...(role === 'TUTOR' && {
           tutorProfile: {
             create: {
-              bio: '',
-              subjects: [],
-              hourlyRate: 0,
+              bio: bio || '',
+              subjects: subjects || [],
+              hourlyRate: hourlyRate || 0,
             },
           },
         }),

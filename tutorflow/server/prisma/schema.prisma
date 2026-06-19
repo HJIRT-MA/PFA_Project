@@ -15,7 +15,6 @@ model User {
   googleId          String?                  @unique
   avatarUrl         String?
   createdAt         DateTime                 @default(now())
-  disputesOpened    Dispute[]
   messagesReceived  Message[]                @relation("MessagesReceived")
   messagesSent      Message[]                @relation("MessagesSent")
   notifications     Notification[]
@@ -29,19 +28,21 @@ model User {
 }
 
 model TutorProfile {
-  id            String   @id @default(uuid())
-  userId        String   @unique
-  bio           String
-  subjects      String[]
-  hourlyRate    Float
-  isVerified    Boolean  @default(false)
-  availability  Json?
-  averageRating Float    @default(0)
-  reviewCount   Int      @default(0)
-  profileViews  Int      @default(0)
-  isOnline      Boolean  @default(true)
-  user          User     @relation(fields: [userId], references: [id])
-  favoritedBy   FavoriteTutor[]
+  id                       String   @id @default(uuid())
+  userId                   String   @unique
+  bio                      String
+  subjects                 String[]
+  hourlyRate               Float
+  subscriptionMonthlyPrice Float?
+  subscriptionYearlyPrice  Float?
+  isVerified               Boolean  @default(true)
+  availability             Json?
+  averageRating            Float    @default(0)
+  reviewCount              Int      @default(0)
+  profileViews             Int      @default(0)
+  isOnline                 Boolean  @default(true)
+  user                     User     @relation(fields: [userId], references: [id])
+  favoritedBy              FavoriteTutor[]
 }
 
 model Session {
@@ -53,7 +54,6 @@ model Session {
   status                SessionStatus @default(PENDING)
   amountCents           Int
   stripePaymentIntentId String?
-  disputes              Dispute[]
   messages              Message[]
   resources             Resource[]
   review                Review?
@@ -111,20 +111,6 @@ model NotificationPreferences {
   user            User    @relation(fields: [userId], references: [id])
 }
 
-model Dispute {
-  id          String        @id @default(uuid())
-  sessionId   String
-  openedBy    String
-  reason      String
-  description String
-  status      DisputeStatus @default(OPEN)
-  resolution  String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  opener      User          @relation(fields: [openedBy], references: [id])
-  session     Session       @relation(fields: [sessionId], references: [id])
-}
-
 model Resource {
   id          String    @id @default(uuid())
   sessionId   String
@@ -150,7 +136,6 @@ model FavoriteTutor {
 enum Role {
   STUDENT
   TUTOR
-  ADMIN
 }
 
 enum SessionStatus {
@@ -169,10 +154,4 @@ enum NotificationType {
   SESSION_REMINDER
   NEW_REVIEW
   REVIEW_REQUEST
-}
-
-enum DisputeStatus {
-  OPEN
-  UNDER_REVIEW
-  RESOLVED
 }

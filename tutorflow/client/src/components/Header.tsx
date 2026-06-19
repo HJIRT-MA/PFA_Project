@@ -90,6 +90,13 @@ export function Header() {
               <span className="absolute -bottom-1.5 left-0 w-0 h-0.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-300 group-hover:w-full" />
             </Link>
           )}
+          {user && user.role === 'TUTOR' && (
+            <Link href={`/tutors/${user.id}`} className="relative text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors duration-200 group flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-500 group-hover:animate-pulse-soft transition-all" />
+                Profile
+              <span className="absolute -bottom-1.5 left-0 w-0 h-0.5 rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-300 group-hover:w-full" />
+            </Link>
+          )}
         </nav>
       </div>
       
@@ -141,7 +148,7 @@ export function Header() {
                   <Button 
                     variant="ghost" 
                     className="w-full justify-start rounded-xl font-semibold h-11 gap-3 hover:bg-primary/5 hover:text-primary transition-all duration-200" 
-                    onClick={() => router.push('/settings/notifications')}
+                    onClick={() => router.push(user.role === 'TUTOR' ? '/settings/profile' : '/settings/notifications')}
                   >
                     <Settings className="w-4 h-4" />
                     Settings
