@@ -139,11 +139,11 @@ sessionsRouter.post('/', requireAuth, requireRole('STUDENT'), async (req: Reques
     const amountCents = Math.round(tutor.hourlyRate * (durationMin / 60) * 100);
 
     if (activeSubscription) {
-      // Calculate start and end of the current week (assuming week starts on Monday)
-      const now = new Date();
-      const dayOfWeek = now.getDay() || 7; // Sunday = 7
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - dayOfWeek + 1);
+      // Calculate start and end of the week of the selected session
+      const sessionDate = new Date(datetime);
+      const dayOfWeek = sessionDate.getDay() || 7; // Sunday = 7
+      const startOfWeek = new Date(sessionDate);
+      startOfWeek.setDate(sessionDate.getDate() - dayOfWeek + 1);
       startOfWeek.setHours(0, 0, 0, 0);
 
       const endOfWeek = new Date(startOfWeek);
@@ -155,7 +155,7 @@ sessionsRouter.post('/', requireAuth, requireRole('STUDENT'), async (req: Reques
         where: {
           studentId,
           tutorId,
-          createdAt: {
+          datetime: {
             gte: startOfWeek,
             lte: endOfWeek
           },
@@ -163,7 +163,7 @@ sessionsRouter.post('/', requireAuth, requireRole('STUDENT'), async (req: Reques
         }
       });
 
-      const weeklyLimit = activeSubscription.plan === 'MONTHLY' ? 3 : 5;
+      const weeklyLimit = 3;
 
       if (weeklySessionsCount >= weeklyLimit) {
         res.status(429).json({ error: `You have reached your limit of ${weeklyLimit} sessions per week for your ${activeSubscription.plan} subscription.` });
@@ -184,20 +184,15 @@ sessionsRouter.post('/', requireAuth, requireRole('STUDENT'), async (req: Reques
       });
 
       // Notify the tutor immediately
-      await notificationService.createNotification(
+      await notificationService.notifyUser(
         session.tutorId,
+        session.tutor.email,
         NotificationType.BOOKING_REQUEST,
         `New Booking Request (Subscriber)`,
         `${session.student.email.split('@')[0]} (Subscriber) has requested a ${session.durationMin}-minute session.`,
+        `<p>You have a new session request on ${session.datetime} from your subscriber.</p>`,
         '/dashboard'
       );
-
-      await resend.emails.send({
-        from: 'TutorFlow <noreply@tutorflow.com>',
-        to: [session.tutor.email],
-        subject: 'New Session Request (Subscriber)',
-        html: `<p>You have a new session request on ${session.datetime} from your subscriber.</p>`
-      }).catch(console.error);
 
       res.json({
         sessionId: session.id,
@@ -276,21 +271,15 @@ sessionsRouter.post('/verify-payment', requireAuth, requireRole('STUDENT'), asyn
       });
 
       // Notify the tutor
-      await notificationService.createNotification(
+      await notificationService.notifyUser(
         updatedSession.tutorId,
+        updatedSession.tutor.email,
         NotificationType.BOOKING_REQUEST,
         `New Booking Request`,
         `${updatedSession.student.email.split('@')[0]} has requested a ${updatedSession.durationMin}-minute session.`,
+        `<p>You have a new session request on ${updatedSession.datetime} that requires your approval.</p>`,
         '/dashboard'
       );
-
-      // Send email
-      await resend.emails.send({
-        from: 'TutorFlow <noreply@tutorflow.com>',
-        to: [updatedSession.tutor.email],
-        subject: 'New Session Request',
-        html: `<p>You have a new session request on ${updatedSession.datetime} that requires your approval.</p>`
-      }).catch(console.error);
 
       res.json({ success: true, session: updatedSession });
     } else {
@@ -334,21 +323,15 @@ sessionsRouter.post('/webhook', async (req: Request, res: Response, next: NextFu
         });
 
         // Notify the tutor
-        await notificationService.createNotification(
+        await notificationService.notifyUser(
           session.tutorId,
+          session.tutor.email,
           NotificationType.BOOKING_REQUEST,
           `New Booking Request`,
           `${session.student.email.split('@')[0]} has requested a ${session.durationMin}-minute session.`,
+          `<p>You have a new session request on ${session.datetime} that requires your approval.</p>`,
           '/dashboard'
         );
-
-        // Send email
-        await resend.emails.send({
-          from: 'TutorFlow <noreply@tutorflow.com>',
-          to: [session.tutor.email],
-          subject: 'New Session Request',
-          html: `<p>You have a new session request on ${session.datetime} that requires your approval.</p>`
-        }).catch(console.error);
       }
     } else if (event.type === 'payment_intent.payment_failed') {
       const paymentIntent = event.data.object as any;
@@ -393,22 +376,16 @@ sessionsRouter.patch('/:id/accept', requireAuth, requireRole('TUTOR'), async (re
       data: { status: 'CONFIRMED' }
     });
 
-    // Notify student via push notification
-    await notificationService.createNotification(
+    // Notify student
+    await notificationService.notifyUser(
       session.studentId,
+      session.student.email,
       NotificationType.BOOKING_CONFIRMED,
       'Session Accepted',
       `Your session on ${new Date(session.datetime).toLocaleDateString()} has been accepted.`,
+      `<p>Your tutor has acknowledged your upcoming session.</p>`,
       '/dashboard'
     );
-
-    // Notify student
-    await resend.emails.send({
-      from: 'TutorFlow <noreply@tutorflow.com>',
-      to: [session.student.email],
-      subject: 'Tutor accepted your session',
-      html: `<p>Your tutor has acknowledged your upcoming session.</p>`
-    }).catch(console.error);
 
     res.json({ success: true, session: updatedSession });
   } catch (error) {
@@ -447,21 +424,16 @@ sessionsRouter.patch('/:id/decline', requireAuth, requireRole('TUTOR'), async (r
       data: { status: 'CANCELLED' }
     });
 
-    // Notify student via push notification
-    await notificationService.createNotification(
+    // Notify student
+    await notificationService.notifyUser(
       session.studentId,
+      session.student.email,
       NotificationType.BOOKING_CANCELLED,
       'Session Declined',
       `Your tutor declined the session. Reason: ${reason}. Your payment will be refunded.`,
+      `<p>Your tutor declined the session. Reason: ${reason}. You have been refunded.</p>`,
       '/dashboard'
     );
-
-    await resend.emails.send({
-      from: 'TutorFlow <noreply@tutorflow.com>',
-      to: [session.student.email],
-      subject: 'Session Declined',
-      html: `<p>Your tutor declined the session. Reason: ${reason}. You have been refunded.</p>`
-    }).catch(console.error);
 
     res.json({ success: true, session: updatedSession });
   } catch (error) {

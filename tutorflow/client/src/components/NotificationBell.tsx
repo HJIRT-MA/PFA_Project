@@ -8,6 +8,7 @@ import { getSocket } from '@/lib/socket';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { toast } from 'sonner';
 
 export const NotificationBell = () => {
   const router = useRouter();
@@ -40,8 +41,11 @@ export const NotificationBell = () => {
     const socket = getSocket();
     if (!socket) return;
 
-    const onNotification = () => {
+    const onNotification = (newNotif: any) => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      if (newNotif && newNotif.title) {
+        toast(newNotif.title, { description: newNotif.body });
+      }
     };
 
     socket.on('notification', onNotification);

@@ -2,9 +2,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Star, MessageCircle, Clock } from 'lucide-react';
 import { api } from '@/lib/api';
+import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ const TutorProfile = () => {
   const { id } = useParams();
   const router = useRouter();
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
 
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -36,6 +38,29 @@ const TutorProfile = () => {
       return res.data;
     }
   });
+
+  const { data: mySubscriptions } = useQuery({
+    queryKey: ['mySubscriptions'],
+    queryFn: async () => {
+      const res = await api.get('/api/subscriptions/me');
+      return res.data;
+    },
+    enabled: !!user
+  });
+
+  const isSubscribedLocally = mySubscriptions?.subscriptions?.some((s: any) => s.tutorId === id && s.status === 'ACTIVE');
+
+  const { data: usageData } = useQuery({
+    queryKey: ['subscriptionUsage', id, date?.toISOString()],
+    queryFn: async () => {
+      if (!date || !isSubscribedLocally) return null;
+      const res = await api.get(`/api/subscriptions/usage?tutorId=${id}&date=${date.toISOString()}`);
+      return res.data;
+    },
+    enabled: !!date && !!isSubscribedLocally
+  });
+
+  const isLimitReached = usageData && usageData.weeklySessionsCount >= usageData.weeklyLimit;
 
   // Track profile view with a ref guard to prevent double-counting in React Strict Mode
   const hasTrackedView = useRef(false);
@@ -118,7 +143,7 @@ const TutorProfile = () => {
     return <div className="text-center py-20 text-xl font-medium">Tutor not found</div>;
   }
 
-  const totalPrice = tutor && tutor.hourlyRate ? (tutor.hourlyRate * (duration / 60)).toFixed(2) : '0.00';
+  const totalPrice = tutor && tutor.hourlyRate && !isSubscribedLocally ? (tutor.hourlyRate * (duration / 60)).toFixed(2) : '0.00';
 
   return (
     <div className="min-h-screen bg-background">
@@ -371,16 +396,39 @@ const TutorProfile = () => {
                         </div>
 
                         <DialogFooter className="flex-col sm:flex-col gap-4">
-                          <div className="flex justify-between w-full font-black text-xl py-4 bg-primary/5 px-6 rounded-2xl">
-                            <span className="text-muted-foreground text-sm uppercase self-center">Total</span>
-                            <span>${totalPrice}</span>
-                          </div>
+                          {isSubscribedLocally ? (
+                            <div className="flex flex-col w-full py-4 bg-primary/5 px-6 rounded-2xl gap-1">
+                              <div className="flex justify-between font-black text-xl">
+                                <span className="text-muted-foreground text-sm uppercase self-center">Included in plan</span>
+                                <span className="text-primary">$0.00</span>
+                              </div>
+                              <div className="text-sm font-medium text-muted-foreground mt-2">
+                                {usageData ? (
+                                  <>
+                                    You have <span className="text-foreground font-bold">{usageData.weeklyLimit - usageData.weeklySessionsCount}</span> sessions left this week 
+                                    ({usageData.weeklySessionsCount}/{usageData.weeklyLimit} used).
+                                  </>
+                                ) : (
+                                  <span className="opacity-50">Calculating...</span>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex justify-between w-full font-black text-xl py-4 bg-primary/5 px-6 rounded-2xl">
+                              <span className="text-muted-foreground text-sm uppercase self-center">Total</span>
+                              <span>${totalPrice}</span>
+                            </div>
+                          )}
                           <Button 
-                            className="w-full h-14 rounded-2xl text-lg font-black" 
+                            className="w-full h-14 rounded-2xl text-lg font-black disabled:opacity-50 disabled:bg-black/80" 
                             onClick={() => bookMutation.mutate()} 
-                            disabled={bookMutation.isPending || !date}
+                            disabled={bookMutation.isPending || !date || isLimitReached}
                           >
-                            {bookMutation.isPending ? 'Processing...' : 'Proceed to Payment'}
+                            {bookMutation.isPending 
+                              ? 'Processing...' 
+                              : isLimitReached 
+                                ? 'Limit Reached (Resets next week)' 
+                                : 'Proceed to Payment'}
                           </Button>
                         </DialogFooter>
                       </DialogContent>

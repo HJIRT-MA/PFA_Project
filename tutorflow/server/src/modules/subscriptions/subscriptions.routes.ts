@@ -148,7 +148,31 @@ subscriptionsRouter.get('/me', requireAuth, async (req: Request, res: Response, 
         where: { studentId: userId, status: 'ACTIVE' },
         include: { tutor: { include: { tutorProfile: true } } }
       });
-      res.json({ subscriptions });
+
+      const now = new Date();
+      const dayOfWeek = now.getDay() || 7;
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - dayOfWeek + 1);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      const subsWithUsage = await Promise.all(subscriptions.map(async sub => {
+        const weeklySessionsCount = await prisma.session.count({
+          where: {
+            studentId: userId,
+            tutorId: sub.tutorId,
+            datetime: { gte: startOfWeek, lte: endOfWeek },
+            status: { notIn: ['CANCELLED', 'AWAITING_PAYMENT'] }
+          }
+        });
+        const weeklyLimit = 3;
+        return { ...sub, weeklySessionsCount, weeklyLimit };
+      }));
+
+      res.json({ subscriptions: subsWithUsage });
     } else {
       const subscriptions = await prisma.subscription.findMany({
         where: { tutorId: userId, status: 'ACTIVE' },
@@ -156,6 +180,52 @@ subscriptionsRouter.get('/me', requireAuth, async (req: Request, res: Response, 
       });
       res.json({ subscriptions });
     }
+  } catch (error) {
+    next(error);
+  }
+});
+
+subscriptionsRouter.get('/usage', requireAuth, requireRole('STUDENT'), async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = (req.user as any).id;
+    const { tutorId, date } = req.query;
+
+    if (!tutorId || !date) {
+      res.status(400).json({ error: 'Missing tutorId or date' });
+      return;
+    }
+
+    const subscription = await prisma.subscription.findFirst({
+      where: { studentId: userId, tutorId: String(tutorId), status: 'ACTIVE' }
+    });
+
+    if (!subscription) {
+      res.status(404).json({ error: 'No active subscription found' });
+      return;
+    }
+
+    const sessionDate = new Date(String(date));
+    const dayOfWeek = sessionDate.getDay() || 7;
+    const startOfWeek = new Date(sessionDate);
+    startOfWeek.setDate(sessionDate.getDate() - dayOfWeek + 1);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    const weeklySessionsCount = await prisma.session.count({
+      where: {
+        studentId: userId,
+        tutorId: String(tutorId),
+        datetime: { gte: startOfWeek, lte: endOfWeek },
+        status: { notIn: ['CANCELLED', 'AWAITING_PAYMENT'] }
+      }
+    });
+
+    const weeklyLimit = 3;
+
+    res.json({ weeklySessionsCount, weeklyLimit });
   } catch (error) {
     next(error);
   }

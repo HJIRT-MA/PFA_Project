@@ -44,13 +44,18 @@ export const setupSocketIO = (httpServer: HttpServer) => {
         socket.emit('message_saved', msg);
         
         // Notify the receiver
-        await notificationService.createNotification(
-          data.receiverId,
-          NotificationType.NEW_MESSAGE,
-          `New message from ${msg.sender.email.split('@')[0]}`,
-          data.content.length > 50 ? `${data.content.substring(0, 50)}...` : data.content,
-          `/dashboard`
-        );
+        const receiver = await prisma.user.findUnique({ where: { id: data.receiverId } });
+        if (receiver) {
+          await notificationService.notifyUser(
+            data.receiverId,
+            receiver.email,
+            NotificationType.NEW_MESSAGE,
+            `New message from ${msg.sender.email.split('@')[0]}`,
+            data.content.length > 50 ? `${data.content.substring(0, 50)}...` : data.content,
+            `<p>You have a new message from ${msg.sender.email.split('@')[0]}:</p><blockquote>${data.content}</blockquote>`,
+            `/dashboard`
+          );
+        }
       } catch (err) {
         console.error(err);
       }

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 const NotificationSettings = () => {
   const queryClient = useQueryClient();
@@ -29,7 +30,7 @@ const NotificationSettings = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
-      alert('Preferences saved successfully');
+      toast.success('Preferences saved successfully');
     }
   });
 
@@ -58,30 +59,30 @@ const NotificationSettings = () => {
           <div className="grid grid-cols-3 gap-4 items-center">
             <Label className="text-base">Booking Updates</Label>
             <div className="flex justify-center">
-              <Checkbox checked={prefs.emailOnBooking} onCheckedChange={(c) => handleChange('emailOnBooking', c as boolean)} />
+              <Checkbox checked={prefs.emailOnBooking || false} onCheckedChange={(c) => handleChange('emailOnBooking', c as boolean)} />
             </div>
             <div className="flex justify-center">
-              <Checkbox checked={prefs.pushOnBooking} onCheckedChange={(c) => handleChange('pushOnBooking', c as boolean)} />
+              <Checkbox checked={prefs.pushOnBooking || false} onCheckedChange={(c) => handleChange('pushOnBooking', c as boolean)} />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4 items-center">
             <Label className="text-base">New Messages</Label>
             <div className="flex justify-center">
-              <Checkbox checked={prefs.emailOnMessage} onCheckedChange={(c) => handleChange('emailOnMessage', c as boolean)} />
+              <Checkbox checked={prefs.emailOnMessage || false} onCheckedChange={(c) => handleChange('emailOnMessage', c as boolean)} />
             </div>
             <div className="flex justify-center">
-              <Checkbox checked={prefs.pushOnMessage} onCheckedChange={(c) => handleChange('pushOnMessage', c as boolean)} />
+              <Checkbox checked={prefs.pushOnMessage || false} onCheckedChange={(c) => handleChange('pushOnMessage', c as boolean)} />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4 items-center">
             <Label className="text-base">Session Reminders</Label>
             <div className="flex justify-center">
-              <Checkbox checked={prefs.emailOnReminder} onCheckedChange={(c) => handleChange('emailOnReminder', c as boolean)} />
+              <Checkbox checked={prefs.emailOnReminder || false} onCheckedChange={(c) => handleChange('emailOnReminder', c as boolean)} />
             </div>
             <div className="flex justify-center">
-              <Checkbox checked={prefs.pushOnReminder} onCheckedChange={(c) => handleChange('pushOnReminder', c as boolean)} />
+              <Checkbox checked={prefs.pushOnReminder || false} onCheckedChange={(c) => handleChange('pushOnReminder', c as boolean)} />
             </div>
           </div>
 

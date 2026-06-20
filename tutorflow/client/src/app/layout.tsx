@@ -20,6 +20,7 @@ export const metadata = {
 };
 
 import { AiChatbot } from '@/components/AiChatbot';
+import { Toaster } from 'sonner';
 
 export default function RootLayout({
   children,
@@ -32,6 +33,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <AiChatbot />
+          <Toaster richColors position="top-center" />
         </Providers>
       </body>
     </html>

@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 const SUBJECTS = ['Math', 'Physics', 'English', 'History', 'CS', 'French', 'Spanish', 'Biology', 'Chemistry', 'Economics'];
 
@@ -61,7 +62,7 @@ const ProfileSettings = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tutor-profile'] });
-      alert('Profile saved successfully');
+      toast.success('Profile saved successfully');
     }
   });
 

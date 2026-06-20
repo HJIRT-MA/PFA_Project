@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -67,7 +68,7 @@ const Dashboard = () => {
       description: disputeDescription
     }),
     onSuccess: () => {
-      alert('Dispute opened successfully');
+      toast.success('Dispute opened successfully');
       setDisputeSessionId(null);
       setDisputeReason('');
       setDisputeDescription('');
@@ -123,7 +124,7 @@ const Dashboard = () => {
       setDeclineReasonText('');
     },
     onError: (err: any) => {
-      alert(err.response?.data?.error || 'Failed to decline session.');
+      toast.error(err.response?.data?.error || 'Failed to decline session.');
     }
   });
 
@@ -414,9 +415,17 @@ const Dashboard = () => {
                         <CardDescription className="text-primary font-medium">{sub.plan} Plan</CardDescription>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <Badge className="bg-green-500/10 text-green-700 font-black rounded-full px-4 mb-1">{sub.status}</Badge>
-                      <div className="text-xs font-bold text-muted-foreground">Renews {format(new Date(sub.currentPeriodEnd), 'PP')}</div>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <Badge className="bg-green-500/10 text-green-700 font-black rounded-full px-4 mb-1">{sub.status}</Badge>
+                        <div className="text-xs font-bold text-muted-foreground">Renews {format(new Date(sub.currentPeriodEnd), 'PP')}</div>
+                      </div>
+                      <Button 
+                        onClick={() => router.push(`/tutors/${sub.tutorId}`)} 
+                        className="rounded-xl font-bold shadow-sm"
+                      >
+                        Book Session
+                      </Button>
                     </div>
                   </CardHeader>
                 </Card>
