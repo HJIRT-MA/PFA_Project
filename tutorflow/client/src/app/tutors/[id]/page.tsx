@@ -61,11 +61,40 @@ const TutorProfile = () => {
       return res.data;
     },
     onSuccess: (data) => {
-      setIsBookingOpen(false);
-      router.push(`/checkout/${data.sessionId}`);
+      if (data.isSubscribed) {
+        toast.success("Session requested successfully using your subscription!");
+        queryClient.invalidateQueries({ queryKey: ['sessions'] });
+        setIsBookingOpen(false);
+        setDate(undefined);
+        setTime('');
+        router.push('/dashboard');
+      } else {
+        setIsBookingOpen(false);
+        router.push(`/checkout/${data.sessionId}`);
+      }
     },
     onError: (err: any) => {
-      alert(err.response?.data?.error || 'Failed to book session');
+      toast.error(err.response?.data?.error || 'Failed to book session');
+    }
+  });
+
+  const subscribeMutation = useMutation({
+    mutationFn: async (plan: 'MONTHLY' | 'YEARLY') => {
+      if (!id) return;
+      const res = await api.post('/api/subscriptions/checkout', {
+        tutorId: id,
+        plan
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      if (data.subscriptionId && data.clientSecret) {
+        window.history.replaceState({ ...window.history.state, usr: { clientSecret: data.clientSecret } }, '');
+        router.push(`/checkout/subscription/${data.subscriptionId}`);
+      }
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.error || 'Failed to initiate subscription');
     }
   });
 
@@ -256,7 +285,7 @@ const TutorProfile = () => {
                           <div className="text-right flex flex-col items-end">
                             <div className="font-black text-lg">${tutor.subscriptionMonthlyPrice}</div>
                             {user?.id !== tutor.id && (
-                              <Button size="sm" className="mt-1 h-7 text-xs rounded-full px-4" onClick={() => alert('Subscription feature coming soon!')}>Subscribe</Button>
+                              <Button size="sm" className="mt-1 h-7 text-xs rounded-full px-4" onClick={() => subscribeMutation.mutate('MONTHLY')} disabled={subscribeMutation.isPending}>Subscribe</Button>
                             )}
                           </div>
                         </div>
@@ -271,7 +300,7 @@ const TutorProfile = () => {
                           <div className="text-right flex flex-col items-end">
                             <div className="font-black text-lg">${tutor.subscriptionYearlyPrice}</div>
                             {user?.id !== tutor.id && (
-                              <Button size="sm" className="mt-1 h-7 text-xs rounded-full px-4" onClick={() => alert('Subscription feature coming soon!')}>Subscribe</Button>
+                              <Button size="sm" className="mt-1 h-7 text-xs rounded-full px-4" onClick={() => subscribeMutation.mutate('YEARLY')} disabled={subscribeMutation.isPending}>Subscribe</Button>
                             )}
                           </div>
                         </div>

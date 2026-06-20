@@ -99,12 +99,7 @@ authRouter.get(
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
 
-    if (user.isNewUser) {
-      // Redirect to onboarding/role selection with token
-      return res.redirect(`${clientUrl}/onboarding?token=${token}&isNewUser=true`);
-    }
-
-    // Redirect to dashboard with token
+    // Connect user directly with Google account without onboarding
     return res.redirect(`${clientUrl}/dashboard?token=${token}`);
   }
 );

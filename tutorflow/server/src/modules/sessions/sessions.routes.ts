@@ -126,9 +126,87 @@ sessionsRouter.post('/', requireAuth, requireRole('STUDENT'), async (req: Reques
       return;
     }
 
+    // Check if user has an active subscription to this tutor
+    const activeSubscription = await prisma.subscription.findFirst({
+      where: {
+        studentId,
+        tutorId,
+        status: 'ACTIVE',
+        currentPeriodEnd: { gt: new Date() } // Ensure it's not expired
+      }
+    });
+
     const amountCents = Math.round(tutor.hourlyRate * (durationMin / 60) * 100);
 
-    // Create session in DB
+    if (activeSubscription) {
+      // Calculate start and end of the current week (assuming week starts on Monday)
+      const now = new Date();
+      const dayOfWeek = now.getDay() || 7; // Sunday = 7
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - dayOfWeek + 1);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      // Count sessions booked THIS week with THIS tutor
+      const weeklySessionsCount = await prisma.session.count({
+        where: {
+          studentId,
+          tutorId,
+          createdAt: {
+            gte: startOfWeek,
+            lte: endOfWeek
+          },
+          status: { notIn: ['CANCELLED', 'AWAITING_PAYMENT'] }
+        }
+      });
+
+      const weeklyLimit = activeSubscription.plan === 'MONTHLY' ? 3 : 5;
+
+      if (weeklySessionsCount >= weeklyLimit) {
+        res.status(429).json({ error: `You have reached your limit of ${weeklyLimit} sessions per week for your ${activeSubscription.plan} subscription.` });
+        return;
+      }
+
+      // Bypass payment and create as PENDING
+      const session = await prisma.session.create({
+        data: {
+          studentId,
+          tutorId,
+          datetime: newSessionStart,
+          durationMin,
+          amountCents: 0, // Free due to subscription
+          status: 'PENDING',
+        },
+        include: { student: true, tutor: true }
+      });
+
+      // Notify the tutor immediately
+      await notificationService.createNotification(
+        session.tutorId,
+        NotificationType.BOOKING_REQUEST,
+        `New Booking Request (Subscriber)`,
+        `${session.student.email.split('@')[0]} (Subscriber) has requested a ${session.durationMin}-minute session.`,
+        '/dashboard'
+      );
+
+      await resend.emails.send({
+        from: 'TutorFlow <noreply@tutorflow.com>',
+        to: [session.tutor.email],
+        subject: 'New Session Request (Subscriber)',
+        html: `<p>You have a new session request on ${session.datetime} from your subscriber.</p>`
+      }).catch(console.error);
+
+      res.json({
+        sessionId: session.id,
+        isSubscribed: true,
+      });
+      return;
+    }
+
+    // Create session in DB (Standard flow)
     const session = await prisma.session.create({
       data: {
         studentId,
@@ -155,7 +233,8 @@ sessionsRouter.post('/', requireAuth, requireRole('STUDENT'), async (req: Reques
 
     res.json({
       sessionId: session.id,
-      clientSecret: paymentIntent.client_secret
+      clientSecret: paymentIntent.client_secret,
+      isSubscribed: false
     });
   } catch (error) {
     next(error);

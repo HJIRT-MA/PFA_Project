@@ -16,6 +16,7 @@ import { notificationsRouter } from './modules/notifications/notifications.route
 import { usersRouter } from './modules/users/users.routes';
 import { aiRouter } from './modules/ai/ai.routes';
 import { uploadRouter } from './modules/upload/upload.routes';
+import { subscriptionsRouter } from './modules/subscriptions/subscriptions.routes';
 import passport from 'passport';
 import { createServer } from 'http';
 import { setupSocketIO } from './socket';
@@ -28,6 +29,7 @@ app.use(morgan('dev'));
 
 // Stripe webhook needs raw body
 app.use('/api/sessions/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/subscriptions/webhook', express.raw({ type: 'application/json' }));
 
 // Serve static files from the uploads directory
 app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
@@ -45,6 +47,7 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/subscriptions', subscriptionsRouter);
 
 // Routes
 app.get('/', (req: Request, res: Response) => {

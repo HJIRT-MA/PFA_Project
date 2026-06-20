@@ -23,6 +23,8 @@ model User {
   reviewsAsTutor    Review[]                 @relation("TutorReviews")
   sessionsAsStudent Session[]                @relation("StudentSessions")
   sessionsAsTutor   Session[]                @relation("TutorSessions")
+  subscriptionsAsStudent Subscription[]      @relation("StudentSubscriptions")
+  subscriptionsAsTutor   Subscription[]      @relation("TutorSubscriptions")
   tutorProfile      TutorProfile?
   favoriteTutors    FavoriteTutor[]
 }
@@ -154,4 +156,36 @@ enum NotificationType {
   SESSION_REMINDER
   NEW_REVIEW
   REVIEW_REQUEST
+  NEW_SUBSCRIPTION
+  SYSTEM
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  studentId            String
+  tutorId              String
+  stripeSubscriptionId String?            @unique
+  stripeCustomerId     String?
+  status               SubscriptionStatus @default(INACTIVE)
+  plan                 SubscriptionPlan
+  currentPeriodEnd     DateTime
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  student User @relation("StudentSubscriptions", fields: [studentId], references: [id])
+  tutor   User @relation("TutorSubscriptions", fields: [tutorId], references: [id])
+
+  @@unique([studentId, tutorId])
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  CANCELED
+  PAST_DUE
+}
+
+enum SubscriptionPlan {
+  MONTHLY
+  YEARLY
 }

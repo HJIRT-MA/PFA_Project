@@ -91,6 +91,14 @@ const Dashboard = () => {
     enabled: user?.role === 'TUTOR'
   });
 
+  const { data: subscriptionsData } = useQuery({
+    queryKey: ['subscriptions'],
+    queryFn: async () => {
+      const res = await api.get('/api/subscriptions/me');
+      return res.data.subscriptions;
+    }
+  });
+
   useEffect(() => {
     if (tutorStats?.isOnline !== undefined) {
       setIsOnline(tutorStats.isOnline);
@@ -140,7 +148,7 @@ const Dashboard = () => {
 
   if (user?.role === 'STUDENT') {
     const upcoming = data.filter((s: any) => s.status !== 'CANCELLED' && s.status !== 'AWAITING_PAYMENT' && new Date(s.datetime).getTime() + s.durationMin * 60000 > new Date().getTime());
-    const past = data.filter((s: any) => s.status === 'COMPLETED' || (s.status !== 'CANCELLED' && new Date(s.datetime).getTime() + s.durationMin * 60000 <= new Date().getTime())).reverse().slice(0, 20);
+    const past = data.filter((s: any) => s.status === 'COMPLETED' || (s.status === 'CONFIRMED' && new Date(s.datetime).getTime() + s.durationMin * 60000 <= new Date().getTime())).reverse().slice(0, 20);
 
     const completedPast = data.filter((s: any) => s.status === 'COMPLETED');
     const totalHoursLearned = completedPast.reduce((sum: number, s: any) => sum + s.durationMin, 0) / 60;
@@ -248,6 +256,7 @@ const Dashboard = () => {
           <TabsList className="bg-muted/50 p-1 rounded-xl">
             <TabsTrigger value="upcoming" className="rounded-lg px-6 font-bold">Upcoming</TabsTrigger>
             <TabsTrigger value="past" className="rounded-lg px-6 font-bold">History</TabsTrigger>
+            <TabsTrigger value="subscriptions" className="rounded-lg px-6 font-bold">Subscriptions</TabsTrigger>
             <TabsTrigger value="resources" className="rounded-lg px-6 font-bold">Resources & Notes</TabsTrigger>
           </TabsList>
 
@@ -383,6 +392,33 @@ const Dashboard = () => {
                       <SessionResources sessionId={session.id} />
                     </CardContent>
                   )}
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="subscriptions" className="grid gap-6">
+            {!subscriptionsData || subscriptionsData.length === 0 ? (
+              <Card className="border-dashed border-2 bg-transparent shadow-none"><CardContent className="py-16 text-center text-muted-foreground">You have no active subscriptions.</CardContent></Card>
+            ) : (
+              subscriptionsData.map((sub: any) => (
+                <Card key={sub.id} className="border-none shadow-[0_10px_30px_rgb(0,0,0,0.04)] rounded-3xl bg-card border-l-4 border-l-green-500">
+                  <CardHeader className="p-6 flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={sub.tutor.avatarUrl} />
+                        <AvatarFallback className="bg-primary/5 text-primary font-bold">{sub.tutor.email[0].toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <CardTitle className="text-lg font-bold">{sub.tutor.email.split('@')[0]}</CardTitle>
+                        <CardDescription className="text-primary font-medium">{sub.plan} Plan</CardDescription>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Badge className="bg-green-500/10 text-green-700 font-black rounded-full px-4 mb-1">{sub.status}</Badge>
+                      <div className="text-xs font-bold text-muted-foreground">Renews {format(new Date(sub.currentPeriodEnd), 'PP')}</div>
+                    </div>
+                  </CardHeader>
                 </Card>
               ))
             )}
@@ -574,6 +610,10 @@ const Dashboard = () => {
               {pending.length > 0 && <Badge className="h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-[10px]">{pending.length}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="past" className="rounded-lg px-6 font-bold">History</TabsTrigger>
+            <TabsTrigger value="subscriptions" className="rounded-lg px-6 font-bold flex gap-2">
+              Subscribers
+              {subscriptionsData?.length > 0 && <Badge className="h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-[10px]">{subscriptionsData.length}</Badge>}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="upcoming" className="grid gap-6">
@@ -707,6 +747,33 @@ const Dashboard = () => {
                       <SessionResources sessionId={session.id} isTutor={true} />
                     </CardContent>
                   )}
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="subscriptions" className="grid gap-6">
+            {!subscriptionsData || subscriptionsData.length === 0 ? (
+              <Card className="border-dashed border-2 bg-transparent shadow-none"><CardContent className="py-16 text-center text-muted-foreground">You have no active subscribers.</CardContent></Card>
+            ) : (
+              subscriptionsData.map((sub: any) => (
+                <Card key={sub.id} className="border-none shadow-[0_10px_30px_rgb(0,0,0,0.04)] rounded-3xl bg-card border-l-4 border-l-green-500">
+                  <CardHeader className="p-6 flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={sub.student.avatarUrl} />
+                        <AvatarFallback className="bg-primary/5 text-primary font-bold">{sub.student.email[0].toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <CardTitle className="text-lg font-bold">{sub.student.email.split('@')[0]}</CardTitle>
+                        <CardDescription className="text-primary font-medium">{sub.plan} Plan</CardDescription>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Badge className="bg-green-500/10 text-green-700 font-black rounded-full px-4 mb-1">{sub.status}</Badge>
+                      <div className="text-xs font-bold text-muted-foreground">Renews {format(new Date(sub.currentPeriodEnd), 'PP')}</div>
+                    </div>
+                  </CardHeader>
                 </Card>
               ))
             )}
