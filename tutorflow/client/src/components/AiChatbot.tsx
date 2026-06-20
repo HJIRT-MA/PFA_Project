@@ -74,7 +74,7 @@ export const AiChatbot = () => {
 
   return (
     <>
-      <div className="fixed bottom-6 right-6 z-[100]">
+      <div className="fixed bottom-6 left-6 z-[100]">
         <Button
           onClick={() => setIsOpen(!isOpen)}
           className={`w-14 h-14 rounded-full shadow-elevated transition-all duration-300 flex items-center justify-center ${
@@ -88,7 +88,7 @@ export const AiChatbot = () => {
       </div>
 
       {isOpen && (
-        <div className="fixed bottom-24 right-6 w-[350px] sm:w-[400px] h-[500px] bg-card border border-border/40 rounded-2xl shadow-elevated flex flex-col z-[100] overflow-hidden animate-fade-in-up">
+        <div className="fixed bottom-24 left-6 w-[350px] sm:w-[400px] h-[500px] bg-card border border-border/40 rounded-2xl shadow-elevated flex flex-col z-[100] overflow-hidden animate-fade-in-up">
           {/* Header */}
           <div className="p-4 bg-gradient-to-r from-[#0f1f3d] to-[#1a2f5a] text-white flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">

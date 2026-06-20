@@ -213,3 +213,12 @@
     box-shadow: var(--shadow-elevated);
   }
 }
+
+/* Hide Stripe developer badge in test mode */
+div[data-testid="stripe-test-badge"],
+.stripe-test-mode-badge,
+.stripe-badge,
+.__PrivateStripeElement > iframe[title*="test mode badge"],
+iframe[src*="stripe.com/v3/developer-badge"] {
+  display: none !important;
+}

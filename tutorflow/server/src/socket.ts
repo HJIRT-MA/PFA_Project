@@ -66,10 +66,10 @@ export const setupSocketIO = (httpServer: HttpServer) => {
         const msg = await prisma.message.findUnique({ where: { id: data.messageId } });
         if (!msg || msg.receiverId !== userId) return;
 
-        const updated = await prisma.message.update({
+       const updated = await prisma.message.update({
           where: { id: data.messageId },
           data: { readAt: new Date() }
-        });
+        }); 
         io.to(`user:${updated.senderId}`).emit('message_read', updated);
       } catch (err) {
         console.error(err);

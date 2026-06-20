@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { getSocket } from '@/lib/socket';
+import { initSocket, getSocket } from '@/lib/socket';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -38,7 +38,7 @@ export const NotificationBell = () => {
   });
 
   useEffect(() => {
-    const socket = getSocket();
+    const socket = initSocket();
     if (!socket) return;
 
     const onNotification = (newNotif: any) => {

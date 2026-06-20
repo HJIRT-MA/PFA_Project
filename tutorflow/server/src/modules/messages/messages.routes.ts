@@ -9,8 +9,6 @@ messagesRouter.get('/conversations', requireAuth, async (req: Request, res: Resp
   try {
     const userId = (req.user as any).id;
 
-    // To get the latest message per conversation, we query all messages for this user
-    // In a production app, we would use a more optimized SQL query with GROUP BY / DISTINCT ON
     const messages = await prisma.message.findMany({
       where: {
         OR: [

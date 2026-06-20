@@ -1,4 +1,4 @@
-import { io } from '../socket';
+import * as socketServer from '../socket';
 import { prisma } from '../lib/prisma';
 import nodemailer from 'nodemailer';
 import { NotificationType } from '@prisma/client';
@@ -17,8 +17,8 @@ export const notificationService = {
       const notification = await prisma.notification.create({
         data: { userId, type, title, body, link }
       });
-      if (io) {
-        io.to(`user:${userId}`).emit('notification', notification);
+      if (socketServer.io) {
+        socketServer.io.to(`user:${userId}`).emit('notification', notification);
       }
       return notification;
     } catch (e) {
@@ -48,6 +48,7 @@ export const notificationService = {
     emailHtml: string,
     link?: string
   ) => {
+    console.log(`[DEBUG] notifyUser called for ${userId} (${emailAddress}) - Type: ${type}`);
     try {
       // 1. Fetch user preferences
       let prefs = await prisma.notificationPreferences.findUnique({
@@ -83,8 +84,8 @@ export const notificationService = {
         shouldPush = safePrefs.pushOnReminder;
       }
 
-      if (shouldPush && io) {
-        io.to(`user:${userId}`).emit('notification', notification);
+      if (shouldPush && socketServer.io) {
+        socketServer.io.to(`user:${userId}`).emit('notification', notification);
       }
 
       // 4. Determine if we should Email
@@ -106,7 +107,7 @@ export const notificationService = {
           to: emailAddress,
           subject: title,
           html: emailHtml
-        }).catch(e => console.log('Note: Nodemailer API failed. Error:', e.message || e));
+        }).catch((e: any) => console.log('Note: Nodemailer API failed. Error:', e.message || e));
       }
 
       return notification;
