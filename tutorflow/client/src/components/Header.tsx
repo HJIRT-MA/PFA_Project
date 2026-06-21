@@ -109,7 +109,7 @@ export function Header() {
             <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-primary rounded-full transition-colors duration-200" onClick={() => setIsChatOpen(true)}>
               <MessageCircle className="w-5 h-5" />
             </Button>
-            <NotificationBell />
+            <NotificationBell onOpenChat={() => setIsChatOpen(true)} />
             <div className="h-6 w-px bg-border/50 mx-1" />
             
             <Popover>

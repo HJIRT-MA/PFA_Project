@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { format, differenceInHours, isPast, isFuture, subMonths } from 'date-fns';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 
@@ -21,6 +21,15 @@ const Dashboard = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<string>('upcoming');
+
+  useEffect(() => {
+    const tab = searchParams?.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const [disputeSessionId, setDisputeSessionId] = useState<string | null>(null);
   const [disputeReason, setDisputeReason] = useState<string>('');
@@ -108,7 +117,12 @@ const Dashboard = () => {
 
   const cancelMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/api/sessions/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessions'] })
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      toast.error(`Session cancelled (Refund: ${res.data.refundPercent}%)`, {
+        duration: 4000
+      });
+    }
   });
 
   const acceptMutation = useMutation({
@@ -253,7 +267,7 @@ const Dashboard = () => {
           </div>
         )}
         
-        <Tabs defaultValue="upcoming" className="space-y-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           <TabsList className="bg-muted/50 p-1 rounded-xl">
             <TabsTrigger value="upcoming" className="rounded-lg px-6 font-bold">Upcoming</TabsTrigger>
             <TabsTrigger value="past" className="rounded-lg px-6 font-bold">History</TabsTrigger>
@@ -314,11 +328,7 @@ const Dashboard = () => {
                           variant="ghost" 
                           size="sm"
                           className="text-destructive hover:text-destructive hover:bg-destructive/5 rounded-xl font-bold px-5"
-                          onClick={() => {
-                            if (confirm(`Cancel this session? You will receive a ${hoursUntil > 24 ? '100%' : hoursUntil > 12 ? '50%' : '0%'} refund.`)) {
-                              cancelMutation.mutate(session.id);
-                            }
-                          }}
+                          onClick={() => cancelMutation.mutate(session.id)}
                           disabled={cancelMutation.isPending}
                         >
                           Cancel
@@ -611,7 +621,7 @@ const Dashboard = () => {
           </div>
         </div>
         
-        <Tabs defaultValue="upcoming" className="space-y-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           <TabsList className="bg-muted/50 p-1 rounded-xl">
             <TabsTrigger value="upcoming" className="rounded-lg px-6 font-bold">Schedule</TabsTrigger>
             <TabsTrigger value="pending" className="rounded-lg px-6 font-bold flex gap-2">

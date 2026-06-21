@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 
-export const NotificationBell = () => {
+export const NotificationBell = ({ onOpenChat }: { onOpenChat?: () => void }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -86,7 +86,13 @@ export const NotificationBell = () => {
                 className={`p-4 border-b border-border/30 cursor-pointer hover:bg-muted/40 transition-colors duration-200 ${!n.readAt ? 'bg-primary/5' : ''}`}
                 onClick={() => {
                   if (!n.readAt) markRead.mutate(n.id);
-                  if (n.link) router.push(n.link);
+                  if (n.link) {
+                    if (n.link.includes('chat=open') && onOpenChat) {
+                      onOpenChat();
+                    } else {
+                      router.push(n.link);
+                    }
+                  }
                 }}
               >
                 <div className="flex justify-between items-start mb-1">

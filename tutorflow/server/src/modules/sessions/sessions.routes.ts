@@ -191,7 +191,7 @@ sessionsRouter.post('/', requireAuth, requireRole('STUDENT'), async (req: Reques
         `New Booking Request (Subscriber)`,
         `${session.student.email.split('@')[0]} (Subscriber) has requested a ${session.durationMin}-minute session.`,
         `<p>You have a new session request on ${session.datetime} from your subscriber.</p>`,
-        '/dashboard'
+        '/dashboard?tab=pending'
       );
 
       res.json({
@@ -278,7 +278,7 @@ sessionsRouter.post('/verify-payment', requireAuth, requireRole('STUDENT'), asyn
         `New Booking Request`,
         `${updatedSession.student.email.split('@')[0]} has requested a ${updatedSession.durationMin}-minute session.`,
         `<p>You have a new session request on ${updatedSession.datetime} that requires your approval.</p>`,
-        '/dashboard'
+        '/dashboard?tab=pending'
       );
 
       res.json({ success: true, session: updatedSession });
@@ -330,7 +330,7 @@ sessionsRouter.post('/webhook', async (req: Request, res: Response, next: NextFu
           `New Booking Request`,
           `${session.student.email.split('@')[0]} has requested a ${session.durationMin}-minute session.`,
           `<p>You have a new session request on ${session.datetime} that requires your approval.</p>`,
-          '/dashboard'
+          '/dashboard?tab=pending'
         );
       }
     } else if (event.type === 'payment_intent.payment_failed') {
@@ -384,7 +384,7 @@ sessionsRouter.patch('/:id/accept', requireAuth, requireRole('TUTOR'), async (re
       'Session Accepted',
       `Your session on ${new Date(session.datetime).toLocaleDateString()} has been accepted.`,
       `<p>Your tutor has acknowledged your upcoming session.</p>`,
-      '/dashboard'
+      '/dashboard?tab=upcoming'
     );
 
     res.json({ success: true, session: updatedSession });
@@ -432,7 +432,7 @@ sessionsRouter.patch('/:id/decline', requireAuth, requireRole('TUTOR'), async (r
       'Session Declined',
       `Your tutor declined the session. Reason: ${reason}. Your payment will be refunded.`,
       `<p>Your tutor declined the session. Reason: ${reason}. You have been refunded.</p>`,
-      '/dashboard'
+      '/dashboard?tab=past'
     );
 
     res.json({ success: true, session: updatedSession });

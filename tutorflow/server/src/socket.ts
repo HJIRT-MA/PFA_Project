@@ -65,7 +65,7 @@ export const setupSocketIO = (httpServer: HttpServer) => {
             `New message from ${msg.sender.email.split('@')[0]}`,
             data.content.length > 50 ? `${data.content.substring(0, 50)}...` : data.content,
             `<p>You have a new message from ${msg.sender.email.split('@')[0]}:</p><blockquote>${data.content}</blockquote>`,
-            `/dashboard`
+            `?chat=open`
           );
         }
       } catch (err) {
