@@ -9,11 +9,23 @@ export let io: SocketIOServer;
 
 export const setupSocketIO = (httpServer: HttpServer) => {
   io = new SocketIOServer(httpServer, {
-    cors: { origin: process.env.CLIENT_URL || 'http://localhost:3000' }
+    cors: { 
+      origin: process.env.CLIENT_URL || 'http://localhost:3000',
+      credentials: true
+    }
   });
 
   io.use((socket, next) => {
-    const token = socket.handshake.auth?.token;
+    let token = socket.handshake.auth?.token;
+    
+    // If no token in auth payload, extract from cookies
+    if (!token && socket.request.headers.cookie) {
+      const match = socket.request.headers.cookie.match(/(^| )auth_token=([^;]+)/);
+      if (match) {
+        token = match[2];
+      }
+    }
+
     if (!token) return next(new Error('Authentication error'));
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecret') as any;

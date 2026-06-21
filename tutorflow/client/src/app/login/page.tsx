@@ -30,7 +30,7 @@ const Login = () => {
   const mutation = useMutation({
     mutationFn: (data: LoginForm) => api.post('/api/auth/login', data),
     onSuccess: (response) => {
-      setUser(response.data.user, response.data.token);
+      setUser(response.data.user);
       router.push('/welcome');
     },
     onError: (error: any) => {

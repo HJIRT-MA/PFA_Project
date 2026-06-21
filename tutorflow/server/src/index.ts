@@ -3,6 +3,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -24,7 +25,8 @@ import path from 'path';
 
 // Middleware
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000' }));
+app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000', credentials: true }));
+app.use(cookieParser());
 app.use(morgan('dev'));
 
 // Stripe webhook needs raw body

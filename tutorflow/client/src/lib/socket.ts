@@ -6,11 +6,11 @@ let socket: Socket | null = null;
 export const initSocket = () => {
   if (socket) return socket;
 
-  const token = useAuthStore.getState().token;
-  if (!token) return null;
+  const user = useAuthStore.getState().user;
+  if (!user) return null;
 
   socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001', {
-    auth: { token }
+    withCredentials: true
   });
 
   socket.on('connect_error', (err) => {

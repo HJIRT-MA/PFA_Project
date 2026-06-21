@@ -9,6 +9,15 @@ import { Role } from '@prisma/client';
 
 export const authRouter = Router();
 
+const setAuthCookie = (res: Response, token: string) => {
+  res.cookie('auth_token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+};
+
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
@@ -55,7 +64,8 @@ authRouter.post('/register', async (req: Request, res: Response, next: NextFunct
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
 
-    res.json({ token, user: { id: user.id, email: user.email, role: user.role, tutorProfile: user.tutorProfile } });
+    setAuthCookie(res, token);
+    res.json({ user: { id: user.id, email: user.email, role: user.role, tutorProfile: user.tutorProfile } });
   } catch (error) {
     next(error);
   }
@@ -79,7 +89,8 @@ authRouter.post('/login', async (req: Request, res: Response, next: NextFunction
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
 
-    res.json({ token, user: { id: user.id, email: user.email, role: user.role, tutorProfile: user.tutorProfile } });
+    setAuthCookie(res, token);
+    res.json({ user: { id: user.id, email: user.email, role: user.role, tutorProfile: user.tutorProfile } });
   } catch (error) {
     next(error);
   }
@@ -99,8 +110,8 @@ authRouter.get(
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
 
-    // Connect user directly with Google account without onboarding
-    return res.redirect(`${clientUrl}/dashboard?token=${token}`);
+    setAuthCookie(res, token);
+    return res.redirect(`${clientUrl}/dashboard`);
   }
 );
 
@@ -140,4 +151,9 @@ authRouter.patch('/me/role', requireAuth, async (req: Request, res: Response, ne
   } catch (error) {
     next(error);
   }
+});
+
+authRouter.post('/logout', (req: Request, res: Response) => {
+  res.clearCookie('auth_token');
+  res.json({ message: 'Logged out successfully' });
 });

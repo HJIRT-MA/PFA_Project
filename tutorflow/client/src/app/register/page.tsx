@@ -67,7 +67,7 @@ const Register = () => {
   const mutation = useMutation({
     mutationFn: (data: Omit<RegisterForm, 'confirmPassword'>) => api.post('/api/auth/register', data),
     onSuccess: (response) => {
-      setUser(response.data.user, response.data.token);
+      setUser(response.data.user);
       router.push('/dashboard');
     },
     onError: (error: any) => {

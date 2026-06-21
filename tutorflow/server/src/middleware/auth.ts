@@ -6,13 +6,20 @@ import { prisma } from '../lib/prisma';
 
 export const requireAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    let token: string | undefined;
+
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.cookies && req.cookies.auth_token) {
+      token = req.cookies.auth_token;
+    }
+
+    if (!token) {
       res.status(401).json({ error: 'Unauthorized: No token provided' });
       return;
     }
 
-    const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { id: string };
 
     const user = await prisma.user.findUnique({

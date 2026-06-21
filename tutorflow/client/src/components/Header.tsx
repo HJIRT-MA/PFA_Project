@@ -156,8 +156,16 @@ export function Header() {
                   <div className="h-px bg-border/40 my-1 mx-2" />
                   <Button 
                     variant="ghost" 
-                    className="w-full justify-start rounded-xl font-semibold h-11 gap-3 text-destructive hover:bg-destructive/5 hover:text-destructive transition-all duration-200" 
-                    onClick={() => { logout(); router.push('/login'); }}
+                    className="w-full justify-start rounded-xl font-semibold h-11 gap-3 text-destructive hover:bg-destructive/5 hover:text-destructive transition-all duration-200"
+                    onClick={async () => {
+                      try {
+                        await api.post('/api/auth/logout');
+                      } catch (e) {
+                        console.error('Logout API error:', e);
+                      }
+                      logout();
+                      router.push('/login');
+                    }}
                   >
                     <LogOut className="w-4 h-4" />
                     Log out

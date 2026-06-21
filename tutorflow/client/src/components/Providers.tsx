@@ -2,75 +2,39 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, useEffect, Suspense } from 'react';
-import { useAuthStore } from '../store/authStore';
-import { api } from '../lib/api';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Header } from './Header';
 import { Footer } from './Footer';
+import { useAuthStore } from '../store/authStore';
+import { api } from '../lib/api';
+import { usePathname } from 'next/navigation';
 
-function AuthInitializer({ children }: { children: React.ReactNode }) {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-  
+function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user, setUser, logout } = useAuthStore();
-  const token = searchParams.get('token');
-  const [isInitializing, setIsInitializing] = useState(true);
-
-  const isPublicRoute = pathname === '/login' || pathname === '/register';
+  const [isHydrating, setIsHydrating] = useState(true);
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (token) {
-      useAuthStore.setState({ token });
-      api.get('/api/auth/me')
-        .then(res => {
-          setUser(res.data.user, token);
-          const newSearchParams = new URLSearchParams(searchParams.toString());
-          newSearchParams.delete('token');
-          const newUrl = window.location.pathname + (newSearchParams.toString() ? `?${newSearchParams.toString()}` : '');
-          window.history.replaceState({}, '', newUrl);
-          setIsInitializing(false);
-        })
-        .catch(() => {
+    // Attempt to fetch the user session on load
+    api.get('/api/auth/me')
+      .then(res => {
+        setUser(res.data.user);
+      })
+      .catch((err) => {
+        // If 401, they are not logged in.
+        const currentUser = useAuthStore.getState().user;
+        if (err.response?.status === 401 && currentUser) {
           logout();
-          setIsInitializing(false);
-          router.push('/login');
-        });
-    } else {
-      const currentToken = useAuthStore.getState().token;
-      if (currentToken) {
-         api.get('/api/auth/me')
-          .then(res => {
-             setUser(res.data.user, currentToken);
-             setIsInitializing(false);
-          })
-          .catch(() => {
-             logout();
-             setIsInitializing(false);
-          });
-      } else {
-        setIsInitializing(false);
-      }
-    }
-  }, [token, router, setUser, logout]); 
-
-  const hasToken = useAuthStore(state => state.token);
-
-  useEffect(() => {
-    if (!isInitializing) {
-      if (!hasToken || !user) {
-        if (!isPublicRoute) {
-          router.replace('/login');
         }
-      } else {
-        if (isPublicRoute) {
-          router.replace('/');
-        }
-      }
-    }
-  }, [isInitializing, hasToken, user, isPublicRoute, router]);
+      })
+      .finally(() => {
+        setIsHydrating(false);
+      });
+  }, [setUser, logout]); // Removed 'user' from deps to prevent infinite loop
 
-  if (isInitializing) {
+  const isPublicRoute = pathname === '/' || pathname === '/login' || pathname === '/register';
+
+  // Prevent rendering protected pages until we know who the user is
+  if (isHydrating && !user && !isPublicRoute) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-3 animate-fade-in-up">
@@ -79,32 +43,6 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
-  }
-
-  // Prevent rendering children if not authenticated on a protected route
-  if (!hasToken || !user) {
-    if (!isPublicRoute) {
-      return (
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="flex flex-col items-center gap-3 animate-fade-in-up">
-            <h2 className="text-2xl font-black tracking-tight text-gradient">TutorFlow</h2>
-            <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-          </div>
-        </div>
-      );
-    }
-  } else {
-    // Prevent rendering login/register if already authenticated
-    if (isPublicRoute) {
-      return (
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="flex flex-col items-center gap-3 animate-fade-in-up">
-            <h2 className="text-2xl font-black tracking-tight text-gradient">TutorFlow</h2>
-            <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-          </div>
-        </div>
-      );
-    }
   }
 
   return <>{children}</>;
@@ -123,7 +61,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       }>
-        <AuthInitializer>
+        <AuthProvider>
           <div className="min-h-screen flex flex-col font-sans antialiased relative">
             <Header />
             <main className="flex-1">
@@ -131,7 +69,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             </main>
             <Footer />
           </div>
-        </AuthInitializer>
+        </AuthProvider>
       </Suspense>
     </QueryClientProvider>
   );
