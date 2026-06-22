@@ -1,7 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import Stripe from 'stripe';
-import { Resend } from 'resend';
 import { prisma } from '../../lib/prisma';
 import { requireAuth, requireRole } from '../../middleware/auth';
 import { notificationService } from '../../services/notification.service';
@@ -10,8 +9,6 @@ import { NotificationType } from '@prisma/client';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock', {
   apiVersion: '2023-10-16' as any, // Bypass strict version type check
 });
-
-const resend = new Resend(process.env.RESEND_API_KEY || 're_mock');
 
 export const sessionsRouter = Router();
 
@@ -513,12 +510,14 @@ sessionsRouter.patch('/:id/complete', requireAuth, requireRole('TUTOR'), async (
       data: { status: 'COMPLETED' }
     });
 
-    await resend.emails.send({
-      from: 'TutorFlow <noreply@tutorflow.com>',
-      to: [session.student.email],
-      subject: 'Session Completed - Please leave a review',
-      html: `<p>Your session has been marked as completed. Please leave a review for your tutor!</p>`
-    }).catch(console.error);
+    await notificationService.notifyUser(
+      session.student.id,
+      session.student.email,
+      'SYSTEM',
+      'Session Completed - Please leave a review',
+      'Your session has been marked as completed. Please leave a review for your tutor!',
+      `<p>Your session has been marked as completed. Please leave a review for your tutor!</p>`
+    );
 
     res.json({ success: true, session: updatedSession });
   } catch (error) {

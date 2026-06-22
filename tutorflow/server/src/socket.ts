@@ -4,6 +4,8 @@ import jwt from 'jsonwebtoken';
 import { prisma } from './lib/prisma';
 import { notificationService } from './services/notification.service';
 import { NotificationType } from '@prisma/client';
+import { createClient } from 'redis';
+import { createAdapter } from '@socket.io/redis-adapter';
 
 export let io: SocketIOServer;
 
@@ -13,6 +15,16 @@ export const setupSocketIO = (httpServer: HttpServer) => {
       origin: process.env.CLIENT_URL || 'http://localhost:3000',
       credentials: true
     }
+  });
+
+  const pubClient = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
+  const subClient = pubClient.duplicate();
+
+  Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log('✅ Socket.IO Redis Adapter connected');
+  }).catch((err) => {
+    console.error('❌ Failed to connect Socket.IO Redis Adapter:', err);
   });
 
   io.use((socket, next) => {
