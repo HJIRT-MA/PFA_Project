@@ -105,7 +105,8 @@ const VideoRoom = () => {
             DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
           }}
           userInfo={{
-            displayName: 'TutorFlow User'
+            displayName: 'TutorFlow User',
+            email: 'user@tutorflow.com'
           }}
           onReadyToClose={handleLeave}
           getIFrameRef={(iframeRef) => {

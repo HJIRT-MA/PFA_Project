@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -17,7 +17,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 
-const Dashboard = () => {
+const DashboardContent = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -921,4 +921,10 @@ const SessionResources = ({ sessionId, isTutor }: { sessionId: string; isTutor?:
   );
 };
 
-export default Dashboard;
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /></div>}>
+      <DashboardContent />
+    </Suspense>
+  );
+}

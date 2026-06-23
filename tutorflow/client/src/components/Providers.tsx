@@ -6,12 +6,13 @@ import { Header } from './Header';
 import { Footer } from './Footer';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user, setUser, logout } = useAuthStore();
   const [isHydrating, setIsHydrating] = useState(true);
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     // Attempt to fetch the user session on load
@@ -31,10 +32,16 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       });
   }, [setUser, logout]); // Removed 'user' from deps to prevent infinite loop
 
-  const isPublicRoute = pathname === '/' || pathname === '/login' || pathname === '/register';
+  const isPublicRoute = pathname === '/login' || pathname === '/register';
 
-  // Prevent rendering protected pages until we know who the user is
-  if (isHydrating && !user && !isPublicRoute) {
+  useEffect(() => {
+    if (!isHydrating && !user && !isPublicRoute) {
+      router.push('/login');
+    }
+  }, [isHydrating, user, isPublicRoute, router]);
+
+  // Prevent rendering protected pages until we know who the user is or while redirecting
+  if (isHydrating || (!user && !isPublicRoute)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-3 animate-fade-in-up">
